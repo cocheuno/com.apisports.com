@@ -5,6 +5,9 @@ import com.apisports.knime.core.model.Sport;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
 import com.apisports.knime.port.ApiSportsConnectionPortObjectSpec;
 import org.knime.core.node.ExecutionContext;
+import org.knime.core.node.ExecutionMonitor;
+import com.apisports.knime.core.ratelimit.RateLimiterManager;
+import com.apisports.knime.core.cache.CacheManager;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
@@ -45,8 +48,11 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
             throw new InvalidSettingsException("API key must not be empty");
         }
         
-        ApiSportsHttpClient client = new ApiSportsHttpClient(apiKey, sport);
-        ApiSportsConnectionPortObjectSpec spec = new ApiSportsConnectionPortObjectSpec(sport, tier);
+        RateLimiterManager rateLimiter = new RateLimiterManager();
+        CacheManager cacheManager = new CacheManager();
+        ApiSportsHttpClient client = new ApiSportsHttpClient(apiKey, sport, rateLimiter, cacheManager);
+        String apiKeyHash = Integer.toHexString(apiKey.hashCode());
+        ApiSportsConnectionPortObjectSpec spec = new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier);
         ApiSportsConnectionPortObject portObject = new ApiSportsConnectionPortObject(spec, client);
         
         return new PortObject[]{portObject};
@@ -62,7 +68,8 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
         Sport sport = Sport.fromId(m_sport.getStringValue());
         String tier = m_tier.getStringValue();
         
-        return new PortObjectSpec[]{new ApiSportsConnectionPortObjectSpec(sport, tier)};
+        String apiKeyHash = Integer.toHexString(apiKey.hashCode());
+        return new PortObjectSpec[]{new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier)};
     }
 
     @Override
@@ -87,13 +94,13 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
     }
 
     @Override
-    protected void loadInternals(final File nodeInternDir, final ExecutionContext exec)
+    protected void loadInternals(final File nodeInternDir, final ExecutionMonitor exec)
             throws IOException {
         // No internals to load
     }
 
     @Override
-    protected void saveInternals(final File nodeInternDir, final ExecutionContext exec)
+    protected void saveInternals(final File nodeInternDir, final ExecutionMonitor exec)
             throws IOException {
         // No internals to save
     }
