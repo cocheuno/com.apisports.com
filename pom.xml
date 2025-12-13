@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.apisports.knime</groupId>
+    <artifactId>com.apisports.knime.parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>API-Sports KNIME Extension</name>
+    <description>KNIME extension for accessing API-Sports data</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <tycho.version>4.0.10</tycho.version>
+        <knime.version>5.5.0</knime.version>
+    </properties>
+
+    <modules>
+        <!-- Bundles -->
+        <module>bundles/com.apisports.knime.core</module>
+        <module>bundles/com.apisports.knime.port</module>
+        <module>bundles/com.apisports.knime.connector</module>
+        <module>bundles/com.apisports.knime.football</module>
+        
+        <!-- Features -->
+        <module>features/com.apisports.knime.core.feature</module>
+        <module>features/com.apisports.knime.football.feature</module>
+        
+        <!-- Release Engineering -->
+        <module>releng/com.apisports.knime.targetplatform</module>
+        <module>releng/com.apisports.knime.update</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-maven-plugin</artifactId>
+                <version>${tycho.version}</version>
+                <extensions>true</extensions>
+            </plugin>
+            
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>target-platform-configuration</artifactId>
+                <version>${tycho.version}</version>
+                <configuration>
+                    <target>
+                        <artifact>
+                            <groupId>com.apisports.knime</groupId>
+                            <artifactId>com.apisports.knime.targetplatform</artifactId>
+                            <version>1.0.0-SNAPSHOT</version>
+                        </artifact>
+                    </target>
+                    <environments>
+                        <environment>
+                            <os>linux</os>
+                            <ws>gtk</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>win32</os>
+                            <ws>win32</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>x86_64</arch>
+                        </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>aarch64</arch>
+                        </environment>
+                    </environments>
+                </configuration>
+            </plugin>
+            
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-compiler-plugin</artifactId>
+                <version>${tycho.version}</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <compilerArgument>-warn:+discouraged,forbidden</compilerArgument>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>knime</id>
+            <layout>p2</layout>
+            <url>https://update.knime.com/analytics-platform/5.5</url>
+        </repository>
+    </repositories>
+</project>

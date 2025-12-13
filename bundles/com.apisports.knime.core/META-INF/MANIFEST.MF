@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: API-Sports Core
+Bundle-SymbolicName: com.apisports.knime.core;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: Carovex
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)"
+Export-Package: com.apisports.knime.core.cache,
+ com.apisports.knime.core.client,
+ com.apisports.knime.core.exception,
+ com.apisports.knime.core.license,
+ com.apisports.knime.core.model,
+ com.apisports.knime.core.ratelimit
+Bundle-ClassPath: .
+Automatic-Module-Name: com.apisports.knime.core
