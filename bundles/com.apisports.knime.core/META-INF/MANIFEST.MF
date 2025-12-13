@@ -5,7 +5,9 @@ Bundle-SymbolicName: com.apisports.knime.core;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Carovex
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)"
+Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)",
+ com.fasterxml.jackson.core.jackson-core;bundle-version="2.16.1",
+ com.fasterxml.jackson.core.jackson-databind;bundle-version="2.16.1"
 Export-Package: com.apisports.knime.core.cache,
  com.apisports.knime.core.client,
  com.apisports.knime.core.exception,
@@ -14,3 +16,4 @@ Export-Package: com.apisports.knime.core.cache,
  com.apisports.knime.core.ratelimit
 Bundle-ClassPath: .
 Automatic-Module-Name: com.apisports.knime.core
+Automatic-Module-Name: com.apisports.knime.connector

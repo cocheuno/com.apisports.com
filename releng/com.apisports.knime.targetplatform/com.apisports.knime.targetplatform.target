@@ -4,8 +4,7 @@
     <locations>
         <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
             <repository location="https://update.knime.com/analytics-platform/5.5"/>
-            <unit id="org.knime.features.base.feature.group" version="0.0.0"/>
-            <unit id="org.knime.features.core.feature.group" version="0.0.0"/>
+	        <unit id="org.knime.features.product.feature.group" version="5.5.2.v202509290908"/>
         </location>
     </locations>
 </target>
