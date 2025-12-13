@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature id="com.apisports.knime.football.feature"
+         label="Carovex API-Sports Football"
+         version="1.0.0.qualifier"
+         provider-name="Carovex">
+
+   <description>Football nodes for Carovex API-Sports KNIME extension</description>
+
+   <plugin id="com.apisports.knime.football" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+</feature>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature id="com.apisports.knime.core.feature"
+         label="Carovex API-Sports Core"
+         version="1.0.0.qualifier"
+         provider-name="Carovex">
+
+   <description>Core components for Carovex API-Sports KNIME extension</description>
+
+   <plugin id="com.apisports.knime.core" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="com.apisports.knime.port" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="com.apisports.knime.connector" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+</feature>

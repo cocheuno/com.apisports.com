@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Source">
+    <name>API-Sports Connector</name>
+    <shortDescription>
+        Connects to the API-Sports service
+    </shortDescription>
+    <fullDescription>
+        <intro>
+            Creates a connection to the API-Sports service using an API key.
+            The connection can be used by downstream nodes to fetch sports data.
+        </intro>
+        <option name="API Key">
+            Your API key from API-Sports. Get one at https://api-sports.io
+        </option>
+        <option name="Sport">
+            The sport to connect to (Football, Basketball, etc.)
+        </option>
+        <option name="Tier">
+            Your subscription tier (Free, Basic, Pro, Ultra)
+        </option>
+    </fullDescription>
+    <ports>
+        <outPort index="0" name="API-Sports Connection">
+            Connection to API-Sports service
+        </outPort>
+    </ports>
+</knimeNode>

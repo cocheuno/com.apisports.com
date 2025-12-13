@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Manipulator">
+    <name>Football Leagues</name>
+    <shortDescription>
+        Fetches football leagues from API-Sports
+    </shortDescription>
+    <fullDescription>
+        <intro>
+            Retrieves a list of football leagues from the API-Sports service.
+            Requires an API-Sports connection as input.
+        </intro>
+        <option name="Country">
+            Optional country filter for leagues
+        </option>
+    </fullDescription>
+    <ports>
+        <inPort index="0" name="API-Sports Connection">
+            Connection to API-Sports service
+        </inPort>
+        <outPort index="0" name="Leagues">
+            Table containing league information
+        </outPort>
+    </ports>
+</knimeNode>

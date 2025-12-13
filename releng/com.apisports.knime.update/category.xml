@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <category-def name="com.apisports.knime" label="Carovex API-Sports">
+      <description>KNIME extension for accessing API-Sports data</description>
+   </category-def>
+   <feature id="com.apisports.knime.core.feature" version="0.0.0">
+      <category name="com.apisports.knime"/>
+   </feature>
+   <feature id="com.apisports.knime.football.feature" version="0.0.0">
+      <category name="com.apisports.knime"/>
+   </feature>
+</site>

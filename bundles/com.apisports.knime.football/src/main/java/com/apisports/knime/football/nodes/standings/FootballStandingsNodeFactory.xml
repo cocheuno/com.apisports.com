@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Manipulator">
+    <name>Football Standings</name>
+    <shortDescription>Fetches football standings from API-Sports</shortDescription>
+    <fullDescription>
+        <intro>Retrieves league standings from the API-Sports service.</intro>
+        <option name="League ID">ID of the league</option>
+        <option name="Season">Season year</option>
+    </fullDescription>
+    <ports>
+        <inPort index="0" name="API-Sports Connection">Connection to API-Sports service</inPort>
+        <outPort index="0" name="Standings">Table containing standings information</outPort>
+    </ports>
+</knimeNode>
