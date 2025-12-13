@@ -7,6 +7,7 @@ import org.knime.core.data.def.StringCell;
 import org.knime.core.node.BufferedDataContainer;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ExecutionContext;
+import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
@@ -72,11 +73,11 @@ public class FootballStandingsNodeModel extends NodeModel {
     }
 
     @Override
-    protected void loadInternals(final File nodeInternDir, final ExecutionContext exec) throws IOException {
+    protected void loadInternals(final File nodeInternDir, final ExecutionMonitor exec) throws IOException {
     }
 
     @Override
-    protected void saveInternals(final File nodeInternDir, final ExecutionContext exec) throws IOException {
+    protected void saveInternals(final File nodeInternDir, final ExecutionMonitor exec) throws IOException {
     }
 
     @Override
