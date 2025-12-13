@@ -1,17 +1,17 @@
-package com.apisports.knime. port;
+package com.apisports.knime.port;
 
-import com.apisports. knime.core. model.Sport;
+import com.apisports. knime.core.model.Sport;
 import org.knime.core.node.CanceledExecutionException;
-import org. knime.core. node.ExecutionMonitor;
-import org.knime.core.node.port.PortObject. PortObjectSerializer;
+import org. knime.core.node.ExecutionMonitor;
+import org.knime.core.node.port.PortObject.PortObjectSerializer;
 import org.knime. core.node.port.PortObjectSpec;
-import org. knime.core. node.port. PortObjectSpec.PortObjectSpecSerializer;
-import org.knime.core.node.port. PortObjectZipInputStream;
+import org. knime.core. node.port.PortObjectSpec.PortObjectSpecSerializer;
+import org.knime.core.node.port.PortObjectZipInputStream;
 import org.knime. core.node.port.PortObjectZipOutputStream;
 
-import java.io. DataInputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java. io.IOException;
+import java.io.IOException;
 import java.util.zip.ZipEntry;
 
 /**
