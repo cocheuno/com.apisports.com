@@ -6,6 +6,7 @@ import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortType;
 import org.knime.core.node.port.PortTypeRegistry;
 
+import javax.swing.JComponent;
 import java.util.Objects;
 
 /**
@@ -57,6 +58,11 @@ public class ApiSportsConnectionPortObject implements PortObject {
         return String.format("API-Sports Connection: %s (%s)", 
             spec.getSport().getDisplayName(), 
             spec.getTierName());
+    }
+
+    @Override
+    public JComponent[] getViews() {
+        return new JComponent[0];
     }
 
     @Override

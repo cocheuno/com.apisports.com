@@ -1,45 +1,61 @@
 package com.apisports.knime.port;
 
-import com.apisports.knime.core.cache.CacheManager;
-import com.apisports.knime.core.client.ApiSportsHttpClient;
-import com.apisports.knime.core.license.LicenseManager;
 import com.apisports.knime.core.model.Sport;
-import com.apisports.knime.core.ratelimit.RateLimiterManager;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortObjectSerializer;
 import org.knime.core.node.port.PortObjectSpec;
-import org.knime.core.node.port.PortObjectSpecZipInputStream;
-import org.knime.core.node.port.PortObjectSpecZipOutputStream;
+import org.knime.core.node.port.PortObjectSpecSerializer;
 import org.knime.core.node.port.PortObjectZipInputStream;
 import org.knime.core.node.port.PortObjectZipOutputStream;
-import org.knime.core.node.port.PortType;
-import org.knime.core.node.port.PortTypeRegistry;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.zip.ZipEntry;
 
 /**
  * Serializer for API-Sports connection port objects.
  * Handles persistence of connection configuration.
  */
-public class ApiSportsConnectionPortObjectSerializer 
-        extends org.knime.core.node.port.AbstractSimplePortObjectSerializer<ApiSportsConnectionPortObject> {
+public class ApiSportsConnectionPortObjectSerializer extends PortObjectSerializer<ApiSportsConnectionPortObject> {
 
-    @Override
-    public ApiSportsConnectionPortObjectSpec loadPortObjectSpec(PortObjectSpecZipInputStream in) 
-            throws IOException {
-        String sportId = in.readUTF();
-        String apiKeyHash = in.readUTF();
-        String tierName = in.readUTF();
+    /**
+     * Spec serializer for ApiSportsConnectionPortObjectSpec.
+     */
+    public static final class SpecSerializer extends PortObjectSpecSerializer<ApiSportsConnectionPortObjectSpec> {
         
-        Sport sport = Sport.fromId(sportId);
-        return new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tierName);
-    }
+        @Override
+        public ApiSportsConnectionPortObjectSpec loadPortObjectSpec(PortObjectZipInputStream in) 
+                throws IOException {
+            // Read the spec data from a zip entry
+            ZipEntry entry = in.getNextEntry();
+            if (entry == null) {
+                throw new IOException("Missing spec data in port object stream");
+            }
+            
+            // Don't close DataInputStream to avoid closing the underlying zip stream
+            DataInputStream dataIn = new DataInputStream(in);
+            String sportId = dataIn.readUTF();
+            String apiKeyHash = dataIn.readUTF();
+            String tierName = dataIn.readUTF();
+            
+            Sport sport = Sport.fromId(sportId);
+            return new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tierName);
+        }
 
-    @Override
-    public void savePortObjectSpec(PortObjectSpec spec, PortObjectSpecZipOutputStream out) 
-            throws IOException {
-        ApiSportsConnectionPortObjectSpec connSpec = (ApiSportsConnectionPortObjectSpec) spec;
-        out.writeUTF(connSpec.getSport().getId());
-        out.writeUTF(connSpec.getApiKeyHash());
-        out.writeUTF(connSpec.getTierName());
+        @Override
+        public void savePortObjectSpec(ApiSportsConnectionPortObjectSpec spec, PortObjectZipOutputStream out) 
+                throws IOException {
+            // Write the spec data to a zip entry
+            out.putNextEntry(new ZipEntry("spec.data"));
+            // Don't close DataOutputStream to avoid closing the underlying zip stream
+            DataOutputStream dataOut = new DataOutputStream(out);
+            dataOut.writeUTF(spec.getSport().getId());
+            dataOut.writeUTF(spec.getApiKeyHash());
+            dataOut.writeUTF(spec.getTierName());
+            dataOut.flush(); // Ensure all data is written
+            out.closeEntry();
+        }
     }
 
     @Override
@@ -64,6 +80,6 @@ public class ApiSportsConnectionPortObjectSerializer
                               org.knime.core.node.ExecutionMonitor exec) 
             throws IOException {
         // We intentionally don't save the client or API key for security reasons
-        // Only the spec is saved
+        // Only the spec is saved (which is handled by the framework via the SpecSerializer)
     }
 }
