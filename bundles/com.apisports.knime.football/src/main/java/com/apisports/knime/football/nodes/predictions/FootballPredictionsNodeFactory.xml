@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Predictor">
+    <name>Football Predictions</name>
+    <shortDescription>Fetches football match predictions from API-Sports</shortDescription>
+    <fullDescription>
+        <intro>Retrieves match predictions from the API-Sports service.</intro>
+        <option name="Fixture ID">ID of the fixture to predict</option>
+    </fullDescription>
+    <ports>
+        <inPort index="0" name="API-Sports Connection">Connection to API-Sports service</inPort>
+        <outPort index="0" name="Predictions">Table containing match predictions</outPort>
+    </ports>
+</knimeNode>

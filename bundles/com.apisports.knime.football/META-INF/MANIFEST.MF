@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Carovex API-Sports Football
+Bundle-SymbolicName: com.apisports.knime.football;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: Carovex
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)",
+ org.knime.base;bundle-version="[5.5.0,6.0.0)",
+ com.apisports.knime.core;bundle-version="[1.0.0,2.0.0)",
+ com.apisports.knime.port;bundle-version="[1.0.0,2.0.0)"
+Bundle-ActivationPolicy: lazy

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Manipulator">
+    <name>Football Stats</name>
+    <shortDescription>Fetches football team statistics from API-Sports</shortDescription>
+    <fullDescription>
+        <intro>Retrieves team statistics from the API-Sports service.</intro>
+        <option name="Team ID">ID of the team</option>
+        <option name="Season">Season year</option>
+    </fullDescription>
+    <ports>
+        <inPort index="0" name="API-Sports Connection">Connection to API-Sports service</inPort>
+        <outPort index="0" name="Stats">Table containing team statistics</outPort>
+    </ports>
+</knimeNode>

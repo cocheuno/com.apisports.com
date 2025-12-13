@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Manipulator">
+    <name>Football Fixtures</name>
+    <shortDescription>Fetches football fixtures from API-Sports</shortDescription>
+    <fullDescription>
+        <intro>Retrieves football fixtures (matches) from the API-Sports service.</intro>
+        <option name="League ID">ID of the league</option>
+        <option name="Season">Season year</option>
+    </fullDescription>
+    <ports>
+        <inPort index="0" name="API-Sports Connection">Connection to API-Sports service</inPort>
+        <outPort index="0" name="Fixtures">Table containing fixture information</outPort>
+    </ports>
+</knimeNode>
