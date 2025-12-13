@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension point="org.knime.core.PortType">
+      <portType name="API-Sports Connection"
+                objectClass="com.apisports.knime.port.ApiSportsConnectionPortObject"
+                objectSerializer="com.apisports.knime.port.ApiSportsConnectionPortObjectSerializer"
+                specClass="com.apisports.knime.port.ApiSportsConnectionPortObjectSpec"
+                specSerializer="com.apisports.knime.port.ApiSportsConnectionPortObjectSerializer$SpecSerializer"
+                color="#FFA500"
+                hidden="false"/>
+   </extension>
+</plugin>
