@@ -33,14 +33,14 @@ public class ApiSportsConnectionPortObjectSerializer extends PortObjectSerialize
                 throw new IOException("Missing spec data in port object stream");
             }
             
-            try (DataInputStream dataIn = new DataInputStream(in)) {
-                String sportId = dataIn.readUTF();
-                String apiKeyHash = dataIn.readUTF();
-                String tierName = dataIn.readUTF();
-                
-                Sport sport = Sport.fromId(sportId);
-                return new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tierName);
-            }
+            // Don't close DataInputStream to avoid closing the underlying zip stream
+            DataInputStream dataIn = new DataInputStream(in);
+            String sportId = dataIn.readUTF();
+            String apiKeyHash = dataIn.readUTF();
+            String tierName = dataIn.readUTF();
+            
+            Sport sport = Sport.fromId(sportId);
+            return new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tierName);
         }
 
         @Override
@@ -48,11 +48,12 @@ public class ApiSportsConnectionPortObjectSerializer extends PortObjectSerialize
                 throws IOException {
             // Write the spec data to a zip entry
             out.putNextEntry(new ZipEntry("spec.data"));
-            try (DataOutputStream dataOut = new DataOutputStream(out)) {
-                dataOut.writeUTF(spec.getSport().getId());
-                dataOut.writeUTF(spec.getApiKeyHash());
-                dataOut.writeUTF(spec.getTierName());
-            }
+            // Don't close DataOutputStream to avoid closing the underlying zip stream
+            DataOutputStream dataOut = new DataOutputStream(out);
+            dataOut.writeUTF(spec.getSport().getId());
+            dataOut.writeUTF(spec.getApiKeyHash());
+            dataOut.writeUTF(spec.getTierName());
+            dataOut.flush(); // Ensure all data is written
             out.closeEntry();
         }
     }
