@@ -60,11 +60,13 @@ public class ApiSportsConnectionPortObjectSerializer extends PortObjectSerialize
     @Override
     public ApiSportsConnectionPortObject loadPortObject(PortObjectZipInputStream in,
                                                        PortObjectSpec spec,
-                                                       ExecutionMonitor exec) 
+                                                       ExecutionMonitor exec)
             throws IOException, CanceledExecutionException {
+        // The port object was saved without the client (for security)
+        // We create a minimal port object with spec only
+        // The client will be null, so nodes must check for this
         ApiSportsConnectionPortObjectSpec connSpec = (ApiSportsConnectionPortObjectSpec) spec;
-        throw new IOException("Port object deserialization not fully supported - " +
-                            "connection must be recreated from source node");
+        return new ApiSportsConnectionPortObject(connSpec, null);
     }
 
     @Override

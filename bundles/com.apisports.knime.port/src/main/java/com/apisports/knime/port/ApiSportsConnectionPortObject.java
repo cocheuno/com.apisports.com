@@ -24,10 +24,10 @@ public class ApiSportsConnectionPortObject implements PortObject {
     private final ApiSportsConnectionPortObjectSpec spec;
     private final transient ApiSportsHttpClient client;
 
-    public ApiSportsConnectionPortObject(ApiSportsConnectionPortObjectSpec spec, 
+    public ApiSportsConnectionPortObject(ApiSportsConnectionPortObjectSpec spec,
                                         ApiSportsHttpClient client) {
         this.spec = Objects.requireNonNull(spec, "Spec cannot be null");
-        this.client = Objects.requireNonNull(client, "Client cannot be null");
+        this.client = client; // Can be null after deserialization
     }
 
     @Override
@@ -37,10 +37,15 @@ public class ApiSportsConnectionPortObject implements PortObject {
 
     /**
      * Get the HTTP client for making API requests.
-     * 
+     *
      * @return The HTTP client
+     * @throws IllegalStateException if the client is not available (e.g., after deserialization)
      */
     public ApiSportsHttpClient getClient() {
+        if (client == null) {
+            throw new IllegalStateException(
+                "API client is not available. Please reset and re-execute the API-Sports Connector node.");
+        }
         return client;
     }
 
