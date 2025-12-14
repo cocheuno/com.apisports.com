@@ -31,7 +31,7 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
     static final String CFGKEY_TIER = "tier";
     
     private final SettingsModelString m_apiKey = new SettingsModelString(CFGKEY_API_KEY, "");
-    private final SettingsModelString m_sport = new SettingsModelString(CFGKEY_SPORT, Sport.FOOTBALL.getId());
+    private final SettingsModelString m_sport = new SettingsModelString(CFGKEY_SPORT, Sport.FOOTBALL.getDisplayName());
     private final SettingsModelString m_tier = new SettingsModelString(CFGKEY_TIER, "free");
 
     protected ApiSportsConnectorNodeModel() {
@@ -41,7 +41,7 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         String apiKey = m_apiKey.getStringValue();
-        Sport sport = Sport.fromId(m_sport.getStringValue());
+        Sport sport = Sport.from(m_sport.getStringValue());
         String tier = m_tier.getStringValue();
         
         if (apiKey == null || apiKey.trim().isEmpty()) {
@@ -64,8 +64,8 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new InvalidSettingsException("API key must be configured");
         }
-        
-        Sport sport = Sport.fromId(m_sport.getStringValue());
+
+        Sport sport = Sport.from(m_sport.getStringValue());
         String tier = m_tier.getStringValue();
         
         String apiKeyHash = Integer.toHexString(apiKey.hashCode());

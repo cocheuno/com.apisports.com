@@ -22,7 +22,7 @@ public class ApiSportsConnectorNodeDialog extends DefaultNodeSettingsPane {
             20));
         
         addDialogComponent(new DialogComponentStringSelection(
-            new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_SPORT, Sport.FOOTBALL.getId()),
+            new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_SPORT, Sport.FOOTBALL.getDisplayName()),
             "Sport:",
             Arrays.stream(Sport.values()).map(Sport::getDisplayName).toArray(String[]::new)));
         
