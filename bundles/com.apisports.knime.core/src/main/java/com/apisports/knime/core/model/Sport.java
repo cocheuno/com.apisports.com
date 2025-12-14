@@ -46,6 +46,35 @@ public enum Sport {
         throw new IllegalArgumentException("Unknown sport ID: " + id);
     }
 
+    public static Sport fromDisplayName(String displayName) {
+        for (Sport sport : values()) {
+            if (sport.displayName.equals(displayName)) {
+                return sport;
+            }
+        }
+        throw new IllegalArgumentException("Unknown sport display name: " + displayName);
+    }
+
+    /**
+     * Flexible method that accepts either an ID or display name and returns the corresponding Sport.
+     * Tries ID first, then display name for backward compatibility.
+     */
+    public static Sport from(String value) {
+        // Try ID first
+        for (Sport sport : values()) {
+            if (sport.id.equals(value)) {
+                return sport;
+            }
+        }
+        // Try display name for backward compatibility
+        for (Sport sport : values()) {
+            if (sport.displayName.equals(value)) {
+                return sport;
+            }
+        }
+        throw new IllegalArgumentException("Unknown sport: " + value);
+    }
+
     @Override
     public String toString() {
         return displayName;
