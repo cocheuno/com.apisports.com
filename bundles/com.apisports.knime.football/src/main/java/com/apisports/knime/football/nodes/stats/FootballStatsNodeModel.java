@@ -27,16 +27,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class FootballStatsNodeModel extends NodeModel {
-    static final String CFGKEY_LEAGUE_ID = "leagueId";
-    static final String CFGKEY_TEAM_ID = "teamId";
     static final String CFGKEY_SEASON = "season";
 
-    private final SettingsModelInteger m_leagueId = new SettingsModelInteger(CFGKEY_LEAGUE_ID, 39);
-    private final SettingsModelInteger m_teamId = new SettingsModelInteger(CFGKEY_TEAM_ID, 1);
     private final SettingsModelInteger m_season = new SettingsModelInteger(CFGKEY_SEASON, 2024);
 
     protected FootballStatsNodeModel() {
-        super(new PortType[]{ApiSportsConnectionPortObject.TYPE}, 
+        super(new PortType[]{ApiSportsConnectionPortObject.TYPE, BufferedDataTable.TYPE_OPTIONAL},
               new PortType[]{BufferedDataTable.TYPE});
     }
 
@@ -44,18 +40,50 @@ public class FootballStatsNodeModel extends NodeModel {
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         ApiSportsConnectionPortObject connection = (ApiSportsConnectionPortObject) inObjects[0];
         ApiSportsHttpClient client = connection.getClient();
-        int leagueId = m_leagueId.getIntValue();
-        int teamId = m_teamId.getIntValue();
         int season = m_season.getIntValue();
+
+        // Determine team ID and league ID: from input table (if connected) or from manual entry
+        int leagueId;
+        int teamId;
+        BufferedDataTable teamsTable = (BufferedDataTable) inObjects[1];
+
+        if (teamsTable != null && teamsTable.size() > 0) {
+            // Read from input table - use first row
+            org.knime.core.data.DataRow firstRow = teamsTable.iterator().next();
+            org.knime.core.data.DataTableSpec tableSpec = teamsTable.getDataTableSpec();
+
+            // Find "League ID" and "Team ID" columns
+            int leagueIdColIndex = tableSpec.findColumnIndex("League ID");
+            int teamIdColIndex = tableSpec.findColumnIndex("Team ID");
+
+            if (leagueIdColIndex == -1) {
+                throw new InvalidSettingsException(
+                    "Input table must have a 'League ID' column. " +
+                    "Connect the output from Football Teams node.");
+            }
+            if (teamIdColIndex == -1) {
+                throw new InvalidSettingsException(
+                    "Input table must have a 'Team ID' column. " +
+                    "Connect the output from Football Teams node.");
+            }
+
+            leagueId = ((org.knime.core.data.def.IntCell) firstRow.getCell(leagueIdColIndex)).getIntValue();
+            teamId = ((org.knime.core.data.def.IntCell) firstRow.getCell(teamIdColIndex)).getIntValue();
+            getLogger().info("Using Team ID " + teamId + " and League ID " + leagueId + " from input table");
+        } else {
+            // No input table - require manual entry
+            throw new InvalidSettingsException(
+                "No teams table connected. " +
+                "Please connect the output from Football Teams node, " +
+                "optionally filtered with Row Filter to select a specific team.");
+        }
 
         // Validate parameters
         if (leagueId <= 0) {
-            throw new InvalidSettingsException("League ID must be greater than 0. " +
-                "Tip: Use Football Leagues node to find league IDs (e.g., Premier League = 39, La Liga = 140)");
+            throw new InvalidSettingsException("League ID must be greater than 0");
         }
         if (teamId <= 0) {
-            throw new InvalidSettingsException("Team ID must be greater than 0. " +
-                "Tip: Use Football Teams or Football Standings node to find team IDs (e.g., Arsenal = 42)");
+            throw new InvalidSettingsException("Team ID must be greater than 0");
         }
         if (season < 2000 || season > 2100) {
             throw new InvalidSettingsException("Season must be a valid year (2000-2100)");
@@ -168,22 +196,16 @@ public class FootballStatsNodeModel extends NodeModel {
 
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
-        m_leagueId.saveSettingsTo(settings);
-        m_teamId.saveSettingsTo(settings);
         m_season.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
-        m_leagueId.loadSettingsFrom(settings);
-        m_teamId.loadSettingsFrom(settings);
         m_season.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        m_leagueId.validateSettings(settings);
-        m_teamId.validateSettings(settings);
         m_season.validateSettings(settings);
     }
 
