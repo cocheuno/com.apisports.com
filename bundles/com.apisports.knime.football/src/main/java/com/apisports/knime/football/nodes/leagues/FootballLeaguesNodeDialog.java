@@ -11,10 +11,10 @@ public class FootballLeaguesNodeDialog extends DefaultNodeSettingsPane {
 
     protected FootballLeaguesNodeDialog() {
         super();
-        
+
         addDialogComponent(new DialogComponentString(
-            new SettingsModelString(FootballLeaguesNodeModel.CFGKEY_COUNTRY, ""),
-            "Country (optional):",
+            new SettingsModelString(FootballLeaguesNodeModel.CFGKEY_COUNTRY, "England"),
+            "Country:",
             true,
             20));
     }
