@@ -27,9 +27,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class FootballStatsNodeModel extends NodeModel {
+    static final String CFGKEY_LEAGUE_ID = "leagueId";
     static final String CFGKEY_TEAM_ID = "teamId";
     static final String CFGKEY_SEASON = "season";
-    
+
+    private final SettingsModelInteger m_leagueId = new SettingsModelInteger(CFGKEY_LEAGUE_ID, 39);
     private final SettingsModelInteger m_teamId = new SettingsModelInteger(CFGKEY_TEAM_ID, 1);
     private final SettingsModelInteger m_season = new SettingsModelInteger(CFGKEY_SEASON, 2024);
 
@@ -42,10 +44,14 @@ public class FootballStatsNodeModel extends NodeModel {
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         ApiSportsConnectionPortObject connection = (ApiSportsConnectionPortObject) inObjects[0];
         ApiSportsHttpClient client = connection.getClient();
+        int leagueId = m_leagueId.getIntValue();
         int teamId = m_teamId.getIntValue();
         int season = m_season.getIntValue();
 
         // Validate parameters
+        if (leagueId <= 0) {
+            throw new InvalidSettingsException("League ID must be greater than 0");
+        }
         if (teamId <= 0) {
             throw new InvalidSettingsException("Team ID must be greater than 0");
         }
@@ -54,11 +60,11 @@ public class FootballStatsNodeModel extends NodeModel {
         }
 
         // Call API to get team statistics
-        exec.setMessage("Fetching statistics for team " + teamId + " season " + season + "...");
+        exec.setMessage("Fetching statistics for team " + teamId + " in league " + leagueId + " season " + season + "...");
         Map<String, String> params = new HashMap<>();
+        params.put("league", String.valueOf(leagueId));
         params.put("team", String.valueOf(teamId));
         params.put("season", String.valueOf(season));
-        params.put("league", ""); // Get stats across all leagues for the season
 
         String responseBody;
         try {
@@ -160,18 +166,21 @@ public class FootballStatsNodeModel extends NodeModel {
 
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
+        m_leagueId.saveSettingsTo(settings);
         m_teamId.saveSettingsTo(settings);
         m_season.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_leagueId.loadSettingsFrom(settings);
         m_teamId.loadSettingsFrom(settings);
         m_season.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_leagueId.validateSettings(settings);
         m_teamId.validateSettings(settings);
         m_season.validateSettings(settings);
     }
