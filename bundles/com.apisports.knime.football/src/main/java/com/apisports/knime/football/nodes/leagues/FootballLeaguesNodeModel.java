@@ -32,8 +32,8 @@ import java.util.Map;
 public class FootballLeaguesNodeModel extends NodeModel {
 
     static final String CFGKEY_COUNTRY = "country";
-    
-    private final SettingsModelString m_country = new SettingsModelString(CFGKEY_COUNTRY, "");
+
+    private final SettingsModelString m_country = new SettingsModelString(CFGKEY_COUNTRY, "England");
 
     protected FootballLeaguesNodeModel() {
         super(new PortType[]{ApiSportsConnectionPortObject.TYPE}, 
