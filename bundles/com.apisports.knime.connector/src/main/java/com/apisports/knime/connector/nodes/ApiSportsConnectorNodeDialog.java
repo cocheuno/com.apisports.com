@@ -2,7 +2,7 @@ package com.apisports.knime.connector.nodes;
 
 import com.apisports.knime.core.model.Sport;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
-import org.knime.core.node.defaultnodesettings.DialogComponentPasswordField;
+import org.knime.core.node.defaultnodesettings.DialogComponentString;
 import org.knime.core.node.defaultnodesettings.DialogComponentStringSelection;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 
@@ -15,11 +15,12 @@ public class ApiSportsConnectorNodeDialog extends DefaultNodeSettingsPane {
 
     protected ApiSportsConnectorNodeDialog() {
         super();
-        
-        addDialogComponent(new DialogComponentPasswordField(
+
+        addDialogComponent(new DialogComponentString(
             new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_API_KEY, ""),
             "API Key:",
-            20));
+            true,
+            50));
         
         addDialogComponent(new DialogComponentStringSelection(
             new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_SPORT, Sport.FOOTBALL.getDisplayName()),
@@ -29,6 +30,6 @@ public class ApiSportsConnectorNodeDialog extends DefaultNodeSettingsPane {
         addDialogComponent(new DialogComponentStringSelection(
             new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_TIER, "free"),
             "Tier:",
-            "Free", "Basic", "Pro", "Ultra"));
+            "free", "basic", "pro", "ultra"));
     }
 }
