@@ -4,16 +4,16 @@ package com.apisports.knime.core.model;
  * Enum representing supported sports in API-Sports.
  */
 public enum Sport {
-    FOOTBALL("football", "Football", "api-football.com"),
-    BASKETBALL("basketball", "Basketball", "api-basketball.com"),
-    FORMULA_1("formula-1", "Formula 1", "api-formula1.com"),
-    NFL("nfl", "NFL", "api-nfl.com"),
-    NBA("nba", "NBA", "api-nba.com"),
-    MLB("mlb", "MLB", "api-mlb.com"),
-    NHL("nhl", "NHL", "api-nhl.com"),
-    RUGBY("rugby", "Rugby", "api-rugby.com"),
-    HANDBALL("handball", "Handball", "api-handball.com"),
-    VOLLEYBALL("volleyball", "Volleyball", "api-volleyball.com");
+    FOOTBALL("football", "Football", "football.api-sports.io"),
+    BASKETBALL("basketball", "Basketball", "basketball.api-sports.io"),
+    FORMULA_1("formula-1", "Formula 1", "formula1.api-sports.io"),
+    NFL("nfl", "NFL", "nfl.api-sports.io"),
+    NBA("nba", "NBA", "nba.api-sports.io"),
+    MLB("mlb", "MLB", "baseball.api-sports.io"),
+    NHL("nhl", "NHL", "hockey.api-sports.io"),
+    RUGBY("rugby", "Rugby", "rugby.api-sports.io"),
+    HANDBALL("handball", "Handball", "handball.api-sports.io"),
+    VOLLEYBALL("volleyball", "Volleyball", "volleyball.api-sports.io");
 
     private final String id;
     private final String displayName;
