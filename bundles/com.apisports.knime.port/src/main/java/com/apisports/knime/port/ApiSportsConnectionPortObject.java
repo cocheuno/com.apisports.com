@@ -8,13 +8,17 @@ import org.knime.core.node.port.PortTypeRegistry;
 
 import javax.swing.JComponent;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Port object representing an API-Sports connection.
  * Carries the authenticated HTTP client between nodes.
  */
 public class ApiSportsConnectionPortObject implements PortObject {
-    
+
+    // Static registry to keep clients alive during execution session
+    private static final ConcurrentHashMap<String, ApiSportsHttpClient> clientRegistry = new ConcurrentHashMap<>();
+
     /**
      * Port type for API-Sports connections.
      */
@@ -28,6 +32,12 @@ public class ApiSportsConnectionPortObject implements PortObject {
                                         ApiSportsHttpClient client) {
         this.spec = Objects.requireNonNull(spec, "Spec cannot be null");
         this.client = client; // Can be null after deserialization
+
+        // Register client in memory if not null
+        if (client != null && spec != null) {
+            String key = generateKey(spec);
+            clientRegistry.put(key, client);
+        }
     }
 
     @Override
@@ -42,16 +52,26 @@ public class ApiSportsConnectionPortObject implements PortObject {
      * @throws IllegalStateException if the client is not available (e.g., after deserialization)
      */
     public ApiSportsHttpClient getClient() {
-        if (client == null) {
-            throw new IllegalStateException(
-                "API client is not available. Please reset and re-execute the API-Sports Connector node.");
+        // Try to use the direct client reference first
+        if (client != null) {
+            return client;
         }
-        return client;
+
+        // If null, try to get from registry (in case this is a deserialized object during same session)
+        String key = generateKey(spec);
+        ApiSportsHttpClient registeredClient = clientRegistry.get(key);
+        if (registeredClient != null) {
+            return registeredClient;
+        }
+
+        // No client available
+        throw new IllegalStateException(
+            "API client is not available. Please reset and re-execute the API-Sports Connector node.");
     }
 
     /**
      * Get the sport configured for this connection.
-     * 
+     *
      * @return The sport
      */
     public Sport getSport() {
@@ -60,8 +80,8 @@ public class ApiSportsConnectionPortObject implements PortObject {
 
     @Override
     public String getSummary() {
-        return String.format("API-Sports Connection: %s (%s)", 
-            spec.getSport().getDisplayName(), 
+        return String.format("API-Sports Connection: %s (%s)",
+            spec.getSport().getDisplayName(),
             spec.getTierName());
     }
 
@@ -85,5 +105,19 @@ public class ApiSportsConnectionPortObject implements PortObject {
     @Override
     public int hashCode() {
         return spec.hashCode();
+    }
+
+    /**
+     * Generate a unique key for this connection based on its spec.
+     */
+    private static String generateKey(ApiSportsConnectionPortObjectSpec spec) {
+        return spec.getSport().getId() + "_" + spec.getApiKeyHash() + "_" + spec.getTierName();
+    }
+
+    /**
+     * Clear the client registry (for testing purposes).
+     */
+    public static void clearRegistry() {
+        clientRegistry.clear();
     }
 }
