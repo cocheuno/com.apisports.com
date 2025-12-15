@@ -28,11 +28,15 @@ import java.util.Map;
 
 public class FootballStatsNodeModel extends NodeModel {
     static final String CFGKEY_SEASON = "season";
+    static final String CFGKEY_LEAGUE_ID = "leagueId";
+    static final String CFGKEY_TEAM_ID = "teamId";
 
     private final SettingsModelInteger m_season = new SettingsModelInteger(CFGKEY_SEASON, 2024);
+    private final SettingsModelInteger m_leagueId = new SettingsModelInteger(CFGKEY_LEAGUE_ID, 0);
+    private final SettingsModelInteger m_teamId = new SettingsModelInteger(CFGKEY_TEAM_ID, 0);
 
     protected FootballStatsNodeModel() {
-        super(new PortType[]{ApiSportsConnectionPortObject.TYPE, BufferedDataTable.TYPE_OPTIONAL},
+        super(new PortType[]{ApiSportsConnectionPortObject.TYPE},
               new PortType[]{BufferedDataTable.TYPE});
     }
 
@@ -40,42 +44,35 @@ public class FootballStatsNodeModel extends NodeModel {
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         ApiSportsConnectionPortObject connection = (ApiSportsConnectionPortObject) inObjects[0];
         ApiSportsHttpClient client = connection.getClient();
-        int season = m_season.getIntValue();
 
-        // Determine team ID and league ID: from input table (if connected) or from manual entry
+        // Try to read season from flow variable, fall back to settings
+        int season;
+        try {
+            season = peekFlowVariableInt("season");
+            getLogger().info("Using season " + season + " from flow variable");
+        } catch (Exception e) {
+            season = m_season.getIntValue();
+            getLogger().info("Using season " + season + " from node settings");
+        }
+
+        // Try to read league ID from flow variable, fall back to settings
         int leagueId;
+        try {
+            leagueId = peekFlowVariableInt("league_id");
+            getLogger().info("Using league ID " + leagueId + " from flow variable");
+        } catch (Exception e) {
+            leagueId = m_leagueId.getIntValue();
+            getLogger().info("Using league ID " + leagueId + " from node settings");
+        }
+
+        // Try to read team ID from flow variable, fall back to settings
         int teamId;
-        BufferedDataTable teamsTable = (BufferedDataTable) inObjects[1];
-
-        if (teamsTable != null && teamsTable.size() > 0) {
-            // Read from input table - use first row
-            org.knime.core.data.DataRow firstRow = teamsTable.iterator().next();
-            org.knime.core.data.DataTableSpec tableSpec = teamsTable.getDataTableSpec();
-
-            // Find "League ID" and "Team ID" columns
-            int leagueIdColIndex = tableSpec.findColumnIndex("League ID");
-            int teamIdColIndex = tableSpec.findColumnIndex("Team ID");
-
-            if (leagueIdColIndex == -1) {
-                throw new InvalidSettingsException(
-                    "Input table must have a 'League ID' column. " +
-                    "Connect the output from Football Teams node.");
-            }
-            if (teamIdColIndex == -1) {
-                throw new InvalidSettingsException(
-                    "Input table must have a 'Team ID' column. " +
-                    "Connect the output from Football Teams node.");
-            }
-
-            leagueId = ((org.knime.core.data.def.IntCell) firstRow.getCell(leagueIdColIndex)).getIntValue();
-            teamId = ((org.knime.core.data.def.IntCell) firstRow.getCell(teamIdColIndex)).getIntValue();
-            getLogger().info("Using Team ID " + teamId + " and League ID " + leagueId + " from input table");
-        } else {
-            // No input table - require manual entry
-            throw new InvalidSettingsException(
-                "No teams table connected. " +
-                "Please connect the output from Football Teams node, " +
-                "optionally filtered with Row Filter to select a specific team.");
+        try {
+            teamId = peekFlowVariableInt("team_id");
+            getLogger().info("Using team ID " + teamId + " from flow variable");
+        } catch (Exception e) {
+            teamId = m_teamId.getIntValue();
+            getLogger().info("Using team ID " + teamId + " from node settings");
         }
 
         // Validate parameters
@@ -197,16 +194,22 @@ public class FootballStatsNodeModel extends NodeModel {
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
         m_season.saveSettingsTo(settings);
+        m_leagueId.saveSettingsTo(settings);
+        m_teamId.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_season.loadSettingsFrom(settings);
+        m_leagueId.loadSettingsFrom(settings);
+        m_teamId.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_season.validateSettings(settings);
+        m_leagueId.validateSettings(settings);
+        m_teamId.validateSettings(settings);
     }
 
     @Override
