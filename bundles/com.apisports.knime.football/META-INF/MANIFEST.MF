@@ -8,6 +8,6 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)",
  org.knime.base;bundle-version="[5.5.0,6.0.0)",
  com.apisports.knime.core;bundle-version="[1.0.0,2.0.0)",
- com.apisports.knime.port;bundle-version="[1.0.0,2.0.0)"
-Import-Package: org.json
+ com.apisports.knime.port;bundle-version="[1.0.0,2.0.0)",
+ com.fasterxml.jackson.core.jackson-databind;bundle-version="2.13.0"
 Bundle-ActivationPolicy: lazy

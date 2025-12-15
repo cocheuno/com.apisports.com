@@ -2,6 +2,8 @@ package com.apisports.knime.football.nodes.leagues;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.def.DefaultRow;
 import org.knime.core.data.def.IntCell;
@@ -18,8 +20,6 @@ import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,23 +63,24 @@ public class FootballLeaguesNodeModel extends NodeModel {
             throw new Exception("Failed to fetch leagues from API: " + e.getMessage(), e);
         }
 
-        // Parse JSON response
-        JSONObject jsonResponse;
-        JSONArray leagues;
+        // Parse JSON response using Jackson (available in KNIME)
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonResponse;
+        JsonNode leaguesArray;
         try {
-            jsonResponse = new JSONObject(responseBody);
+            jsonResponse = mapper.readTree(responseBody);
 
             // Check for API errors
-            if (jsonResponse.has("errors") && jsonResponse.getJSONArray("errors").length() > 0) {
-                JSONArray errors = jsonResponse.getJSONArray("errors");
+            if (jsonResponse.has("errors") && jsonResponse.get("errors").size() > 0) {
+                JsonNode errors = jsonResponse.get("errors");
                 StringBuilder errorMsg = new StringBuilder("API returned errors: ");
-                for (int i = 0; i < errors.length(); i++) {
-                    errorMsg.append(errors.getString(i)).append("; ");
+                for (JsonNode error : errors) {
+                    errorMsg.append(error.asText()).append("; ");
                 }
                 throw new Exception(errorMsg.toString());
             }
 
-            leagues = jsonResponse.getJSONArray("response");
+            leaguesArray = jsonResponse.get("response");
         } catch (Exception e) {
             throw new Exception("Failed to parse API response: " + e.getMessage() + ". Response: " +
                               (responseBody.length() > 200 ? responseBody.substring(0, 200) + "..." : responseBody), e);
@@ -90,36 +91,36 @@ public class FootballLeaguesNodeModel extends NodeModel {
         BufferedDataContainer container = exec.createDataContainer(outputSpec);
 
         // Process each league
-        exec.setMessage("Processing " + leagues.length() + " leagues...");
-        for (int i = 0; i < leagues.length(); i++) {
+        int leagueCount = leaguesArray.size();
+        exec.setMessage("Processing " + leagueCount + " leagues...");
+        for (int i = 0; i < leagueCount; i++) {
             exec.checkCanceled();
-            exec.setProgress((double) i / leagues.length(), "Processing league " + (i + 1) + " of " + leagues.length());
+            exec.setProgress((double) i / leagueCount, "Processing league " + (i + 1) + " of " + leagueCount);
 
             try {
-                JSONObject leagueData = leagues.getJSONObject(i);
-                JSONObject league = leagueData.getJSONObject("league");
-                JSONObject countryObj = leagueData.getJSONObject("country");
+                JsonNode leagueData = leaguesArray.get(i);
+                JsonNode league = leagueData.get("league");
+                JsonNode countryObj = leagueData.get("country");
 
-                int leagueId = league.getInt("id");
-                String leagueName = league.getString("name");
-                String leagueType = league.getString("type");
-                String countryName = countryObj.getString("name");
+                int leagueId = league.get("id").asInt();
+                String leagueName = league.get("name").asText();
+                String leagueType = league.get("type").asText();
+                String countryName = countryObj.get("name").asText();
 
                 // Find current season
                 int currentYear = 0;
                 if (leagueData.has("seasons")) {
-                    JSONArray seasons = leagueData.getJSONArray("seasons");
-                    for (int j = 0; j < seasons.length(); j++) {
-                        JSONObject season = seasons.getJSONObject(j);
-                        if (season.has("current") && season.getBoolean("current")) {
-                            currentYear = season.getInt("year");
+                    JsonNode seasons = leagueData.get("seasons");
+                    for (JsonNode season : seasons) {
+                        if (season.has("current") && season.get("current").asBoolean()) {
+                            currentYear = season.get("year").asInt();
                             break;
                         }
                     }
                     // If no current season found, use the last season
-                    if (currentYear == 0 && seasons.length() > 0) {
-                        JSONObject lastSeason = seasons.getJSONObject(seasons.length() - 1);
-                        currentYear = lastSeason.getInt("year");
+                    if (currentYear == 0 && seasons.size() > 0) {
+                        JsonNode lastSeason = seasons.get(seasons.size() - 1);
+                        currentYear = lastSeason.get("year").asInt();
                     }
                 }
 
