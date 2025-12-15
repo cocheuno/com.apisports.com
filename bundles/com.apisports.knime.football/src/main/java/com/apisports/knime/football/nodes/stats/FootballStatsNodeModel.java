@@ -1,7 +1,11 @@
 package com.apisports.knime.football.nodes.stats;
 
+import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.DataTableSpec;
+import org.knime.core.data.def.DefaultRow;
 import org.knime.core.data.def.IntCell;
 import org.knime.core.data.def.StringCell;
 import org.knime.core.node.BufferedDataContainer;
@@ -19,6 +23,8 @@ import org.knime.core.node.port.PortType;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class FootballStatsNodeModel extends NodeModel {
     static final String CFGKEY_TEAM_ID = "teamId";
@@ -34,9 +40,108 @@ public class FootballStatsNodeModel extends NodeModel {
 
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        ApiSportsConnectionPortObject connection = (ApiSportsConnectionPortObject) inObjects[0];
+        ApiSportsHttpClient client = connection.getClient();
+        int teamId = m_teamId.getIntValue();
+        int season = m_season.getIntValue();
+
+        // Validate parameters
+        if (teamId <= 0) {
+            throw new InvalidSettingsException("Team ID must be greater than 0");
+        }
+        if (season < 2000 || season > 2100) {
+            throw new InvalidSettingsException("Season must be a valid year (2000-2100)");
+        }
+
+        // Call API to get team statistics
+        exec.setMessage("Fetching statistics for team " + teamId + " season " + season + "...");
+        Map<String, String> params = new HashMap<>();
+        params.put("team", String.valueOf(teamId));
+        params.put("season", String.valueOf(season));
+        params.put("league", ""); // Get stats across all leagues for the season
+
+        String responseBody;
+        try {
+            responseBody = client.get("/teams/statistics", params);
+        } catch (Exception e) {
+            throw new Exception("Failed to fetch team statistics from API: " + e.getMessage(), e);
+        }
+
+        // Parse JSON response using Jackson
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonResponse;
+        JsonNode statsData;
+        try {
+            jsonResponse = mapper.readTree(responseBody);
+
+            // Check for API errors
+            if (jsonResponse.has("errors") && jsonResponse.get("errors").size() > 0) {
+                JsonNode errors = jsonResponse.get("errors");
+                StringBuilder errorMsg = new StringBuilder("API returned errors: ");
+                for (JsonNode error : errors) {
+                    errorMsg.append(error.asText()).append("; ");
+                }
+                throw new Exception(errorMsg.toString());
+            }
+
+            statsData = jsonResponse.get("response");
+            if (statsData == null) {
+                throw new Exception("No statistics data returned from API");
+            }
+
+        } catch (Exception e) {
+            throw new Exception("Failed to parse API response: " + e.getMessage() + ". Response: " +
+                              (responseBody.length() > 200 ? responseBody.substring(0, 200) + "..." : responseBody), e);
+        }
+
+        // Create output table spec
         DataTableSpec outputSpec = createOutputSpec();
         BufferedDataContainer container = exec.createDataContainer(outputSpec);
+
+        exec.setMessage("Processing team statistics...");
+
+        try {
+            // Extract team name
+            String teamName = statsData.get("team").get("name").asText();
+
+            // Extract fixtures statistics
+            JsonNode fixtures = statsData.get("fixtures");
+            JsonNode fixturesPlayed = fixtures.get("played");
+            int totalMatches = fixturesPlayed.get("total").asInt();
+
+            JsonNode fixturesWins = fixtures.get("wins");
+            int totalWins = fixturesWins.get("total").asInt();
+
+            JsonNode fixturesDraws = fixtures.get("draws");
+            int totalDraws = fixturesDraws.get("total").asInt();
+
+            JsonNode fixturesLosses = fixtures.get("loses");
+            int totalLosses = fixturesLosses.get("total").asInt();
+
+            // Extract goals statistics
+            JsonNode goals = statsData.get("goals");
+            JsonNode goalsFor = goals.get("for");
+            int totalGoalsFor = goalsFor.get("total").get("total").asInt();
+
+            JsonNode goalsAgainst = goals.get("against");
+            int totalGoalsAgainst = goalsAgainst.get("total").get("total").asInt();
+
+            // Create single row with team statistics
+            container.addRowToTable(new DefaultRow("Row0",
+                new StringCell(teamName),
+                new IntCell(totalMatches),
+                new IntCell(totalWins),
+                new IntCell(totalDraws),
+                new IntCell(totalLosses),
+                new IntCell(totalGoalsFor),
+                new IntCell(totalGoalsAgainst)));
+
+        } catch (Exception e) {
+            throw new Exception("Failed to extract statistics from response: " + e.getMessage(), e);
+        }
+
         container.close();
+        exec.setMessage("Complete - team statistics retrieved");
         return new PortObject[]{container.getTable()};
     }
 
