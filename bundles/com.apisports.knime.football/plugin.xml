@@ -5,6 +5,8 @@
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.leagues.FootballLeaguesNodeFactory"/>
       <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.teams.FootballTeamsNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.fixtures.FootballFixturesNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.standings.FootballStandingsNodeFactory"/>

@@ -47,7 +47,8 @@ public class FootballFixturesNodeModel extends NodeModel {
 
         // Validate parameters
         if (leagueId <= 0) {
-            throw new InvalidSettingsException("League ID must be greater than 0");
+            throw new InvalidSettingsException("League ID must be greater than 0. " +
+                "Tip: Use Football Leagues node to find league IDs (e.g., Premier League = 39, La Liga = 140)");
         }
         if (season < 2000 || season > 2100) {
             throw new InvalidSettingsException("Season must be a valid year (2000-2100)");
