@@ -4,6 +4,7 @@ import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.def.DefaultRow;
 import org.knime.core.data.def.IntCell;
@@ -16,6 +17,7 @@ import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
@@ -29,17 +31,18 @@ import java.util.Map;
 /**
  * NodeModel for the Football Teams node.
  * Fetches all teams for a specific league and season.
+ * Can accept an optional leagues table input for selection.
  */
 public class FootballTeamsNodeModel extends NodeModel {
 
-    static final String CFGKEY_LEAGUE_ID = "leagueId";
+    static final String CFGKEY_LEAGUE_SELECTION = "leagueSelection";
     static final String CFGKEY_SEASON = "season";
 
-    private final SettingsModelInteger m_leagueId = new SettingsModelInteger(CFGKEY_LEAGUE_ID, 39);
+    private final SettingsModelString m_leagueSelection = new SettingsModelString(CFGKEY_LEAGUE_SELECTION, "");
     private final SettingsModelInteger m_season = new SettingsModelInteger(CFGKEY_SEASON, 2024);
 
     protected FootballTeamsNodeModel() {
-        super(new PortType[]{ApiSportsConnectionPortObject.TYPE},
+        super(new PortType[]{ApiSportsConnectionPortObject.TYPE, BufferedDataTable.TYPE_OPTIONAL},
               new PortType[]{BufferedDataTable.TYPE});
     }
 
