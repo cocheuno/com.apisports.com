@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Source">
+    <name>Football Teams</name>
+
+    <shortDescription>
+        Retrieves all teams for a specific league and season from API-Sports.
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Fetches all teams participating in a specific league and season. This node provides
+            the team IDs needed for other nodes like Football Stats.
+            </p>
+            <p>
+            The output table includes: Team ID, Name, Code, Country, Founded year, Venue name, City, and Logo URL.
+            </p>
+            <p><b>Common League IDs:</b></p>
+            <ul>
+                <li>39 - Premier League (England)</li>
+                <li>140 - La Liga (Spain)</li>
+                <li>135 - Serie A (Italy)</li>
+                <li>78 - Bundesliga (Germany)</li>
+                <li>61 - Ligue 1 (France)</li>
+            </ul>
+            <p>
+            <b>Workflow Pattern:</b> Use Football Leagues node first to find the league ID,
+            then use this node to get teams for that league.
+            </p>
+        </intro>
+
+        <option name="League ID">
+            The ID of the league to fetch teams for. Use the Football Leagues node to find league IDs.
+            Default: 39 (Premier League)
+        </option>
+
+        <option name="Season">
+            The season year (e.g., 2024). Must be between 2000 and 2100.
+            Default: 2024
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API-Sports Connection">
+            Connection to API-Sports service (from API-Sports Connector node)
+        </inPort>
+        <outPort index="0" name="Teams Table">
+            Table containing all teams for the specified league and season
+        </outPort>
+    </ports>
+</knimeNode>
