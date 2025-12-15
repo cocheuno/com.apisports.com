@@ -52,57 +52,91 @@ public class FootballLeaguesNodeModel extends NodeModel {
         }
 
         // Call API to get leagues
+        exec.setMessage("Fetching leagues for " + country + "...");
         Map<String, String> params = new HashMap<>();
         params.put("country", country);
-        String responseBody = client.get("/leagues", params);
+
+        String responseBody;
+        try {
+            responseBody = client.get("/leagues", params);
+        } catch (Exception e) {
+            throw new Exception("Failed to fetch leagues from API: " + e.getMessage(), e);
+        }
 
         // Parse JSON response
-        JSONObject jsonResponse = new JSONObject(responseBody);
-        JSONArray leagues = jsonResponse.getJSONArray("response");
+        JSONObject jsonResponse;
+        JSONArray leagues;
+        try {
+            jsonResponse = new JSONObject(responseBody);
+
+            // Check for API errors
+            if (jsonResponse.has("errors") && jsonResponse.getJSONArray("errors").length() > 0) {
+                JSONArray errors = jsonResponse.getJSONArray("errors");
+                StringBuilder errorMsg = new StringBuilder("API returned errors: ");
+                for (int i = 0; i < errors.length(); i++) {
+                    errorMsg.append(errors.getString(i)).append("; ");
+                }
+                throw new Exception(errorMsg.toString());
+            }
+
+            leagues = jsonResponse.getJSONArray("response");
+        } catch (Exception e) {
+            throw new Exception("Failed to parse API response: " + e.getMessage() + ". Response: " +
+                              (responseBody.length() > 200 ? responseBody.substring(0, 200) + "..." : responseBody), e);
+        }
 
         // Create output table spec
         DataTableSpec outputSpec = createOutputSpec();
         BufferedDataContainer container = exec.createDataContainer(outputSpec);
 
         // Process each league
+        exec.setMessage("Processing " + leagues.length() + " leagues...");
         for (int i = 0; i < leagues.length(); i++) {
-            JSONObject leagueData = leagues.getJSONObject(i);
-            JSONObject league = leagueData.getJSONObject("league");
-            JSONObject countryObj = leagueData.getJSONObject("country");
+            exec.checkCanceled();
+            exec.setProgress((double) i / leagues.length(), "Processing league " + (i + 1) + " of " + leagues.length());
 
-            int leagueId = league.getInt("id");
-            String leagueName = league.getString("name");
-            String leagueType = league.getString("type");
-            String countryName = countryObj.getString("name");
+            try {
+                JSONObject leagueData = leagues.getJSONObject(i);
+                JSONObject league = leagueData.getJSONObject("league");
+                JSONObject countryObj = leagueData.getJSONObject("country");
 
-            // Find current season
-            int currentYear = 0;
-            if (leagueData.has("seasons")) {
-                JSONArray seasons = leagueData.getJSONArray("seasons");
-                for (int j = 0; j < seasons.length(); j++) {
-                    JSONObject season = seasons.getJSONObject(j);
-                    if (season.has("current") && season.getBoolean("current")) {
-                        currentYear = season.getInt("year");
-                        break;
+                int leagueId = league.getInt("id");
+                String leagueName = league.getString("name");
+                String leagueType = league.getString("type");
+                String countryName = countryObj.getString("name");
+
+                // Find current season
+                int currentYear = 0;
+                if (leagueData.has("seasons")) {
+                    JSONArray seasons = leagueData.getJSONArray("seasons");
+                    for (int j = 0; j < seasons.length(); j++) {
+                        JSONObject season = seasons.getJSONObject(j);
+                        if (season.has("current") && season.getBoolean("current")) {
+                            currentYear = season.getInt("year");
+                            break;
+                        }
+                    }
+                    // If no current season found, use the last season
+                    if (currentYear == 0 && seasons.length() > 0) {
+                        JSONObject lastSeason = seasons.getJSONObject(seasons.length() - 1);
+                        currentYear = lastSeason.getInt("year");
                     }
                 }
-                // If no current season found, use the last season
-                if (currentYear == 0 && seasons.length() > 0) {
-                    JSONObject lastSeason = seasons.getJSONObject(seasons.length() - 1);
-                    currentYear = lastSeason.getInt("year");
-                }
-            }
 
-            // Create row
-            container.addRowToTable(new DefaultRow("Row" + i,
-                new IntCell(leagueId),
-                new StringCell(leagueName),
-                new StringCell(countryName),
-                new StringCell(leagueType),
-                new IntCell(currentYear)));
+                // Create row
+                container.addRowToTable(new DefaultRow("Row" + i,
+                    new IntCell(leagueId),
+                    new StringCell(leagueName),
+                    new StringCell(countryName),
+                    new StringCell(leagueType),
+                    new IntCell(currentYear)));
+            } catch (Exception e) {
+                getLogger().warn("Skipping league at index " + i + " due to error: " + e.getMessage());
+            }
         }
 
         container.close();
+        exec.setMessage("Complete - processed " + container.getTable().size() + " leagues");
         return new PortObject[]{container.getTable()};
     }
 
