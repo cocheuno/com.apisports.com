@@ -31,16 +31,21 @@ import java.util.Map;
 /**
  * NodeModel for the Football Teams node.
  * Fetches all teams for a specific league and season.
- * Can accept an optional leagues table input for selection.
+ * Reads league_id and season from flow variables (or falls back to manual settings).
+ * Pushes team_id flow variable for downstream nodes if selected.
  */
 public class FootballTeamsNodeModel extends NodeModel {
 
     static final String CFGKEY_SEASON = "season";
+    static final String CFGKEY_LEAGUE_ID = "leagueId";
+    static final String CFGKEY_SELECTED_TEAM_ID = "selectedTeamId";
 
     private final SettingsModelInteger m_season = new SettingsModelInteger(CFGKEY_SEASON, 2024);
+    private final SettingsModelInteger m_leagueId = new SettingsModelInteger(CFGKEY_LEAGUE_ID, 0);
+    private final SettingsModelInteger m_selectedTeamId = new SettingsModelInteger(CFGKEY_SELECTED_TEAM_ID, 0);
 
     protected FootballTeamsNodeModel() {
-        super(new PortType[]{ApiSportsConnectionPortObject.TYPE, BufferedDataTable.TYPE_OPTIONAL},
+        super(new PortType[]{ApiSportsConnectionPortObject.TYPE},
               new PortType[]{BufferedDataTable.TYPE});
     }
 
@@ -48,33 +53,25 @@ public class FootballTeamsNodeModel extends NodeModel {
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         ApiSportsConnectionPortObject connection = (ApiSportsConnectionPortObject) inObjects[0];
         ApiSportsHttpClient client = connection.getClient();
-        int season = m_season.getIntValue();
 
-        // Determine league ID: from input table (if connected) or from manual entry
+        // Try to read season from flow variable, fall back to settings
+        int season;
+        try {
+            season = peekFlowVariableInt("season");
+            getLogger().info("Using season " + season + " from flow variable");
+        } catch (Exception e) {
+            season = m_season.getIntValue();
+            getLogger().info("Using season " + season + " from node settings");
+        }
+
+        // Try to read league ID from flow variable, fall back to settings
         int leagueId;
-        BufferedDataTable leaguesTable = (BufferedDataTable) inObjects[1];
-
-        if (leaguesTable != null && leaguesTable.size() > 0) {
-            // Read from input table - use first row
-            DataRow firstRow = leaguesTable.iterator().next();
-            DataTableSpec tableSpec = leaguesTable.getDataTableSpec();
-
-            // Find "League ID" column
-            int leagueIdColIndex = tableSpec.findColumnIndex("League ID");
-            if (leagueIdColIndex == -1) {
-                throw new InvalidSettingsException(
-                    "Input table must have a 'League ID' column. " +
-                    "Connect the output from Football Leagues node.");
-            }
-
-            leagueId = ((IntCell) firstRow.getCell(leagueIdColIndex)).getIntValue();
-            getLogger().info("Using League ID " + leagueId + " from input table");
-        } else {
-            // No input table - require manual entry
-            throw new InvalidSettingsException(
-                "No leagues table connected. " +
-                "Please connect the output from Football Leagues node, " +
-                "optionally filtered with Row Filter to select a specific league.");
+        try {
+            leagueId = peekFlowVariableInt("league_id");
+            getLogger().info("Using league ID " + leagueId + " from flow variable");
+        } catch (Exception e) {
+            leagueId = m_leagueId.getIntValue();
+            getLogger().info("Using league ID " + leagueId + " from node settings");
         }
 
         // Validate parameters
@@ -174,6 +171,18 @@ public class FootballTeamsNodeModel extends NodeModel {
 
         container.close();
         exec.setMessage("Complete - processed " + container.getTable().size() + " teams");
+
+        // Push flow variables for downstream nodes
+        pushFlowVariableInt("season", season);
+        pushFlowVariableInt("league_id", leagueId);
+
+        // If user selected a specific team ID, push it
+        int selectedTeamId = m_selectedTeamId.getIntValue();
+        if (selectedTeamId > 0) {
+            pushFlowVariableInt("team_id", selectedTeamId);
+            getLogger().info("Pushing team ID " + selectedTeamId + " to flow variables");
+        }
+
         return new PortObject[]{container.getTable()};
     }
 
@@ -194,16 +203,22 @@ public class FootballTeamsNodeModel extends NodeModel {
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
         m_season.saveSettingsTo(settings);
+        m_leagueId.saveSettingsTo(settings);
+        m_selectedTeamId.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_season.loadSettingsFrom(settings);
+        m_leagueId.loadSettingsFrom(settings);
+        m_selectedTeamId.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_season.validateSettings(settings);
+        m_leagueId.validateSettings(settings);
+        m_selectedTeamId.validateSettings(settings);
     }
 
     @Override

@@ -17,6 +17,7 @@ import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
@@ -32,11 +33,15 @@ import java.util.Map;
 public class FootballLeaguesNodeModel extends NodeModel {
 
     static final String CFGKEY_COUNTRY = "country";
+    static final String CFGKEY_SEASON = "season";
+    static final String CFGKEY_SELECTED_LEAGUE_ID = "selectedLeagueId";
 
     private final SettingsModelString m_country = new SettingsModelString(CFGKEY_COUNTRY, "England");
+    private final SettingsModelInteger m_season = new SettingsModelInteger(CFGKEY_SEASON, 2024);
+    private final SettingsModelInteger m_selectedLeagueId = new SettingsModelInteger(CFGKEY_SELECTED_LEAGUE_ID, 0);
 
     protected FootballLeaguesNodeModel() {
-        super(new PortType[]{ApiSportsConnectionPortObject.TYPE}, 
+        super(new PortType[]{ApiSportsConnectionPortObject.TYPE},
               new PortType[]{BufferedDataTable.TYPE});
     }
 
@@ -138,6 +143,19 @@ public class FootballLeaguesNodeModel extends NodeModel {
 
         container.close();
         exec.setMessage("Complete - processed " + container.getTable().size() + " leagues");
+
+        // Push flow variables for downstream nodes
+        int season = m_season.getIntValue();
+        pushFlowVariableInt("season", season);
+        pushFlowVariableString("country", country);
+
+        // If user selected a specific league ID, push it
+        int selectedLeagueId = m_selectedLeagueId.getIntValue();
+        if (selectedLeagueId > 0) {
+            pushFlowVariableInt("league_id", selectedLeagueId);
+            getLogger().info("Pushing league ID " + selectedLeagueId + " to flow variables");
+        }
+
         return new PortObject[]{container.getTable()};
     }
 
@@ -157,16 +175,22 @@ public class FootballLeaguesNodeModel extends NodeModel {
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
         m_country.saveSettingsTo(settings);
+        m_season.saveSettingsTo(settings);
+        m_selectedLeagueId.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_country.loadSettingsFrom(settings);
+        m_season.loadSettingsFrom(settings);
+        m_selectedLeagueId.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_country.validateSettings(settings);
+        m_season.validateSettings(settings);
+        m_selectedLeagueId.validateSettings(settings);
     }
 
     @Override

@@ -7,7 +7,7 @@ import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 
 /**
  * NodeDialog for the Football Stats node.
- * Team ID and League ID are read from the input table (from Football Teams node).
+ * Reads team_id, league_id, and season from flow variables.
  */
 public class FootballStatsNodeDialog extends DefaultNodeSettingsPane {
     protected FootballStatsNodeDialog() {
@@ -16,18 +16,26 @@ public class FootballStatsNodeDialog extends DefaultNodeSettingsPane {
         setDefaultTabTitle("Options");
         createNewTab("Info");
         addDialogComponent(new DialogComponentLabel(
-            "This node requires a connection to Football Teams node.\n\n" +
+            "This node reads team_id, league_id, and season from flow variables.\n\n" +
             "Workflow Pattern:\n" +
-            "1. Football Leagues → outputs leagues table\n" +
-            "2. (Optional) Row Filter → select one league\n" +
-            "3. Football Teams → reads League ID, outputs teams table\n" +
-            "4. (Optional) Row Filter → select one team\n" +
-            "5. Football Stats → reads Team ID & League ID from first row\n\n" +
-            "The first row's Team ID and League ID will be used automatically."));
+            "1. Football Leagues → Select country/season/league, exports flow variables\n" +
+            "2. Football Teams → Reads flow variables, exports team_id\n" +
+            "3. Football Stats → Reads all flow variables, outputs team statistics\n\n" +
+            "Flow Variables:\n" +
+            "- Reads: season, league_id, team_id\n\n" +
+            "Override: You can manually enter values below if flow variables are not available."));
 
         selectTab("Options");
         addDialogComponent(new DialogComponentNumber(
             new SettingsModelInteger(FootballStatsNodeModel.CFGKEY_SEASON, 2024),
-            "Season:", 1));
+            "Season (override):", 1));
+
+        addDialogComponent(new DialogComponentNumber(
+            new SettingsModelInteger(FootballStatsNodeModel.CFGKEY_LEAGUE_ID, 0),
+            "League ID (override, 0 = use flow var):", 1));
+
+        addDialogComponent(new DialogComponentNumber(
+            new SettingsModelInteger(FootballStatsNodeModel.CFGKEY_TEAM_ID, 0),
+            "Team ID (override, 0 = use flow var):", 1));
     }
 }
