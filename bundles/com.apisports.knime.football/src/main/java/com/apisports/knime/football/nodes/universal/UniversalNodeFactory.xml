@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./default.png" type="Source">
+    <name>Carovex Football - API Request (Universal)</name>
+
+    <shortDescription>
+        Universal API request node for Football API endpoints
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+                The Universal API Request node provides access to the entire Football API surface area
+                through a descriptor-driven interface. This is a <b>prototype implementation</b> demonstrating
+                the Carovex architecture.
+            </p>
+            <p>
+                <b>How it works:</b>
+            </p>
+            <ul>
+                <li>Select an endpoint from the dropdown (loaded from descriptors/football-endpoints.yaml)</li>
+                <li>Enter required parameters as JSON (e.g., {"league":39, "season":2024})</li>
+                <li>Execute to fetch data from the API</li>
+                <li>Data is automatically flattened to a KNIME table</li>
+            </ul>
+            <p>
+                <b>Available Endpoints (v1):</b>
+            </p>
+            <ul>
+                <li>leagues_all - Get all leagues</li>
+                <li>fixtures_by_league - Get fixtures for league/season</li>
+                <li>teams_by_league - Get teams for league/season</li>
+                <li>standings_by_league - Get league standings</li>
+                <li>team_statistics - Get detailed team statistics</li>
+                <li>players_top_scorers - Get top goal scorers</li>
+                <li>odds_prematch - Get pre-match betting odds</li>
+            </ul>
+            <p>
+                <b>Future Enhancements:</b>
+            </p>
+            <ul>
+                <li>Dynamic parameter UI (type-specific input fields)</li>
+                <li>Parameter validation with helpful error messages</li>
+                <li>Paging support for large result sets</li>
+                <li>Caching based on endpoint policies</li>
+                <li>Advanced flattening with nested object/array handling</li>
+            </ul>
+        </intro>
+
+        <option name="Endpoint">
+            Select the API endpoint to call. Each endpoint corresponds to a specific API operation
+            defined in the descriptor registry.
+        </option>
+
+        <option name="Parameters (JSON)">
+            Enter endpoint parameters as a JSON object. For example:
+            <br/>
+            <tt>{"league": 39, "season": 2024}</tt>
+            <br/>
+            Required parameters vary by endpoint. See the descriptor or API documentation for details.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from Carovex Connector node
+        </inPort>
+        <outPort index="0" name="Data Table">
+            Flattened data table with results from the API
+        </outPort>
+    </ports>
+</knimeNode>
