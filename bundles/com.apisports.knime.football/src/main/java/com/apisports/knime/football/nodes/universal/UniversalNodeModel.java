@@ -146,7 +146,9 @@ public class UniversalNodeModel extends NodeModel {
             // Return empty table with minimal spec
             DataTableSpec emptySpec = new DataTableSpec(
                 new DataColumnSpecCreator("_empty", StringCell.TYPE).createSpec());
-            return exec.createBufferedDataTable(emptySpec, exec.createDataContainer(emptySpec).getTable());
+            BufferedDataContainer container = exec.createDataContainer(emptySpec);
+            container.close();
+            return container.getTable();
         }
 
         // Analyze first row to determine schema
@@ -186,7 +188,7 @@ public class UniversalNodeModel extends NodeModel {
                 JsonNode value = row.get(key);
 
                 if (value == null || value.isNull()) {
-                    cells[j] = DataCell.getMissingCell();
+                    cells[j] = columnSpecs.get(j).getType().getMissingCell();
                 } else if (value.isInt()) {
                     cells[j] = new IntCell(value.asInt());
                 } else {
