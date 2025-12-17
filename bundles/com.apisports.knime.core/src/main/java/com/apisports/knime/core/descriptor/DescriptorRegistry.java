@@ -49,8 +49,8 @@ public class DescriptorRegistry {
             throw new IllegalArgumentException("Descriptor resource not found: " + resourcePath);
         }
 
-        Yaml yaml = new Yaml(new Constructor(DescriptorFile.class));
-        DescriptorFile file = yaml.load(inputStream);
+        Yaml yaml = new Yaml();
+        DescriptorFile file = yaml.loadAs(inputStream, DescriptorFile.class);
 
         this.version = file.getVersion();
         this.sport = file.getSport();
