@@ -15,12 +15,11 @@ import java.util.Map;
 public class DescriptorLoader {
 
     /**
-     * Load descriptors from YAML resource.
+     * Load descriptors from YAML InputStream.
      */
-    public static List<EndpointDescriptor> loadFromResource(String resourcePath) throws Exception {
-        InputStream inputStream = DescriptorLoader.class.getResourceAsStream(resourcePath);
+    public static List<EndpointDescriptor> loadFromStream(InputStream inputStream) throws Exception {
         if (inputStream == null) {
-            throw new IllegalArgumentException("Resource not found: " + resourcePath);
+            throw new IllegalArgumentException("InputStream is null");
         }
 
         Yaml yaml = new Yaml();

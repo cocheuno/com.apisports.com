@@ -27,7 +27,12 @@ public class UniversalNodeDialog extends DefaultNodeSettingsPane {
         try {
             DescriptorRegistry registry = DescriptorRegistry.getInstance();
             if (registry.getAllDescriptors().isEmpty()) {
-                registry.loadFromResource("/descriptors/football-endpoints.yaml");
+                // Load from this bundle's resources (football bundle, not core)
+                java.io.InputStream stream = getClass().getResourceAsStream("/descriptors/football-endpoints.yaml");
+                if (stream == null) {
+                    throw new Exception("Descriptor file not found in football bundle");
+                }
+                registry.loadFromStream(stream);
             }
 
             endpointIds = registry.getAllDescriptors()

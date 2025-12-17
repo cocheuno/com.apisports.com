@@ -53,7 +53,13 @@ public class UniversalNodeModel extends NodeModel {
 
         // Initialize descriptor registry
         try {
-            DescriptorRegistry.getInstance().loadFromResource("/descriptors/football-endpoints.yaml");
+            // Load from this bundle's resources (football bundle, not core)
+            InputStream stream = getClass().getResourceAsStream("/descriptors/football-endpoints.yaml");
+            if (stream != null) {
+                DescriptorRegistry.getInstance().loadFromStream(stream);
+            } else {
+                getLogger().warn("Descriptor file not found in football bundle");
+            }
         } catch (Exception e) {
             getLogger().error("Failed to load endpoint descriptors: " + e.getMessage(), e);
         }

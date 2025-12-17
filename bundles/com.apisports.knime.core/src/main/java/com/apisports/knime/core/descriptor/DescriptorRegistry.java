@@ -44,8 +44,26 @@ public class DescriptorRegistry {
      * @param resourcePath Path to YAML file in classpath (e.g., "/descriptors/football-endpoints.yaml")
      */
     public synchronized void loadFromResource(String resourcePath) throws Exception {
+        InputStream inputStream = getClass().getResourceAsStream(resourcePath);
+        if (inputStream == null) {
+            throw new IllegalArgumentException("Descriptor resource not found: " + resourcePath);
+        }
+        loadFromStream(inputStream);
+    }
+
+    /**
+     * Load descriptors from an InputStream.
+     * Use this when loading from a different bundle's resources.
+     *
+     * @param inputStream InputStream containing YAML data
+     */
+    public synchronized void loadFromStream(InputStream inputStream) throws Exception {
+        if (inputStream == null) {
+            throw new IllegalArgumentException("InputStream is null");
+        }
+
         // Use manual loader for more robust parsing
-        List<EndpointDescriptor> descriptors = DescriptorLoader.loadFromResource(resourcePath);
+        List<EndpointDescriptor> descriptors = DescriptorLoader.loadFromStream(inputStream);
 
         // Clear existing
         descriptorsById.clear();
