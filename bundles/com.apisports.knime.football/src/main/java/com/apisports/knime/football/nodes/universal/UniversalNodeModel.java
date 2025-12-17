@@ -150,12 +150,18 @@ public class UniversalNodeModel extends NodeModel {
     }
 
     /**
-     * Flatten JSON array to KNIME table (simple prototype implementation).
+     * Flatten JSON array or object to KNIME table (simple prototype implementation).
      * TODO: Implement full flattening engine with descriptor rules.
      */
-    private BufferedDataTable flattenJsonToTable(JsonNode dataArray, ExecutionContext exec,
+    private BufferedDataTable flattenJsonToTable(JsonNode data, ExecutionContext exec,
                                                    EndpointDescriptor descriptor) throws Exception {
-        if (!dataArray.isArray() || dataArray.size() == 0) {
+        // Handle object response type (single row)
+        if (data.isObject()) {
+            return flattenSingleObject(data, exec);
+        }
+
+        // Handle array response type (multiple rows)
+        if (!data.isArray() || data.size() == 0) {
             // Return empty table with minimal spec
             DataTableSpec emptySpec = new DataTableSpec(
                 new DataColumnSpecCreator("_empty", StringCell.TYPE).createSpec());
@@ -165,7 +171,7 @@ public class UniversalNodeModel extends NodeModel {
         }
 
         // Analyze first row to determine schema
-        JsonNode firstRow = dataArray.get(0);
+        JsonNode firstRow = data.get(0);
         List<DataColumnSpec> columnSpecs = new ArrayList<>();
         List<String> columnKeys = new ArrayList<>();
 
@@ -188,12 +194,12 @@ public class UniversalNodeModel extends NodeModel {
         BufferedDataContainer container = exec.createDataContainer(outputSpec);
 
         // Process each row
-        int rowCount = dataArray.size();
+        int rowCount = data.size();
         for (int i = 0; i < rowCount; i++) {
             exec.checkCanceled();
             exec.setProgress((double) i / rowCount);
 
-            JsonNode row = dataArray.get(i);
+            JsonNode row = data.get(i);
             DataCell[] cells = new DataCell[columnKeys.size()];
 
             for (int j = 0; j < columnKeys.size(); j++) {
@@ -214,6 +220,49 @@ public class UniversalNodeModel extends NodeModel {
 
             container.addRowToTable(new DefaultRow("Row" + i, cells));
         }
+
+        container.close();
+        return container.getTable();
+    }
+
+    /**
+     * Flatten a single JSON object to a one-row KNIME table.
+     */
+    private BufferedDataTable flattenSingleObject(JsonNode object, ExecutionContext exec) throws Exception {
+        List<DataColumnSpec> columnSpecs = new ArrayList<>();
+        List<String> columnKeys = new ArrayList<>();
+        List<DataCell> cells = new ArrayList<>();
+
+        // Get all top-level fields from the object
+        Iterator<String> fieldNames = object.fieldNames();
+        while (fieldNames.hasNext()) {
+            String fieldName = fieldNames.next();
+            JsonNode fieldValue = object.get(fieldName);
+
+            // Determine type
+            if (fieldValue.isInt()) {
+                columnSpecs.add(new DataColumnSpecCreator(fieldName, IntCell.TYPE).createSpec());
+                cells.add(new IntCell(fieldValue.asInt()));
+            } else if (fieldValue.isObject() || fieldValue.isArray()) {
+                // Convert complex types to JSON string
+                columnSpecs.add(new DataColumnSpecCreator(fieldName, StringCell.TYPE).createSpec());
+                cells.add(new StringCell(fieldValue.toString()));
+            } else if (fieldValue.isNull()) {
+                columnSpecs.add(new DataColumnSpecCreator(fieldName, StringCell.TYPE).createSpec());
+                cells.add(StringCell.TYPE.getMissingCell());
+            } else {
+                columnSpecs.add(new DataColumnSpecCreator(fieldName, StringCell.TYPE).createSpec());
+                cells.add(new StringCell(fieldValue.asText()));
+            }
+            columnKeys.add(fieldName);
+        }
+
+        // Create table spec and container
+        DataTableSpec outputSpec = new DataTableSpec(columnSpecs.toArray(new DataColumnSpec[0]));
+        BufferedDataContainer container = exec.createDataContainer(outputSpec);
+
+        // Add single row
+        container.addRowToTable(new DefaultRow("Row0", cells.toArray(new DataCell[0])));
 
         container.close();
         return container.getTable();
