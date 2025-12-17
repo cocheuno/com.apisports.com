@@ -204,6 +204,9 @@ public class UniversalNodeModel extends NodeModel {
                     cells[j] = columnSpecs.get(j).getType().getMissingCell();
                 } else if (value.isInt()) {
                     cells[j] = new IntCell(value.asInt());
+                } else if (value.isObject() || value.isArray()) {
+                    // Convert complex types to JSON string
+                    cells[j] = new StringCell(value.toString());
                 } else {
                     cells[j] = new StringCell(value.asText());
                 }
