@@ -82,9 +82,15 @@ public class UniversalNodeModel extends NodeModel {
             throw new InvalidSettingsException("Endpoint not found: " + endpointId);
         }
 
-        // Parse parameters
+        // Parse parameters - JSON can have integers, so parse as Object first then convert to String
         ObjectMapper mapper = new ObjectMapper();
-        Map<String, String> params = mapper.readValue(m_parameters.getStringValue(), HashMap.class);
+        Map<String, Object> paramsRaw = mapper.readValue(m_parameters.getStringValue(), HashMap.class);
+
+        // Convert all values to strings for API client
+        Map<String, String> params = new HashMap<>();
+        for (Map.Entry<String, Object> entry : paramsRaw.entrySet()) {
+            params.put(entry.getKey(), entry.getValue() != null ? entry.getValue().toString() : "");
+        }
 
         // Validate parameters
         validateParameters(descriptor, params);
