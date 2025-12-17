@@ -275,7 +275,7 @@ endpoints:
       description: Standings updated after each match, hourly is reasonable
 
     response:
-      rootPath: response[0].league.standings[0]
+      rootPath: response
       type: array
       flatten:
         prefix: ""
