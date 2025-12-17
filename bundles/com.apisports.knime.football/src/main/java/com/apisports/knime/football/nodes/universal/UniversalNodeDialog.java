@@ -23,6 +23,7 @@ public class UniversalNodeDialog extends DefaultNodeSettingsPane {
 
         // Load descriptors
         List<String> endpointIds = new ArrayList<>();
+        String errorMessage = "";
         try {
             DescriptorRegistry registry = DescriptorRegistry.getInstance();
             if (registry.getAllDescriptors().isEmpty()) {
@@ -39,9 +40,14 @@ public class UniversalNodeDialog extends DefaultNodeSettingsPane {
                 endpointIds.add("<no endpoints loaded>");
             }
         } catch (Exception e) {
+            errorMessage = "ERROR: " + e.getClass().getSimpleName() + ": " + e.getMessage();
             endpointIds.add("<error loading endpoints>");
-            // Print to console for debugging
+            // Print detailed stack trace to console for debugging
+            System.err.println("============================================");
+            System.err.println("Failed to load endpoint descriptors:");
+            System.err.println("============================================");
             e.printStackTrace();
+            System.err.println("============================================");
         }
 
         // Add endpoint selector
@@ -60,8 +66,13 @@ public class UniversalNodeDialog extends DefaultNodeSettingsPane {
             10));
 
         // Add help text
-        addDialogComponent(new DialogComponentLabel(
-            "Enter parameters as JSON. Example: {\"league\":39, \"season\":2024}\n" +
-            "Available endpoints: leagues_all, fixtures_by_league, teams_by_league, standings_by_league"));
+        String helpText = "Enter parameters as JSON. Example: {\"league\":39, \"season\":2024}\n" +
+            "Available endpoints: leagues_all, fixtures_by_league, teams_by_league, standings_by_league";
+
+        if (!errorMessage.isEmpty()) {
+            helpText = errorMessage + "\n\nCheck Eclipse console for details.\n\n" + helpText;
+        }
+
+        addDialogComponent(new DialogComponentLabel(helpText));
     }
 }
