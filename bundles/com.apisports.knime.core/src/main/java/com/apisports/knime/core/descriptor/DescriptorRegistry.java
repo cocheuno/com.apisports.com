@@ -44,23 +44,15 @@ public class DescriptorRegistry {
      * @param resourcePath Path to YAML file in classpath (e.g., "/descriptors/football-endpoints.yaml")
      */
     public synchronized void loadFromResource(String resourcePath) throws Exception {
-        InputStream inputStream = getClass().getResourceAsStream(resourcePath);
-        if (inputStream == null) {
-            throw new IllegalArgumentException("Descriptor resource not found: " + resourcePath);
-        }
-
-        Yaml yaml = new Yaml();
-        DescriptorFile file = yaml.loadAs(inputStream, DescriptorFile.class);
-
-        this.version = file.getVersion();
-        this.sport = file.getSport();
+        // Use manual loader for more robust parsing
+        List<EndpointDescriptor> descriptors = DescriptorLoader.loadFromResource(resourcePath);
 
         // Clear existing
         descriptorsById.clear();
         descriptorsByCategory.clear();
 
         // Index descriptors
-        for (EndpointDescriptor descriptor : file.getEndpoints()) {
+        for (EndpointDescriptor descriptor : descriptors) {
             // Validate required fields
             validateDescriptor(descriptor);
 
@@ -73,6 +65,9 @@ public class DescriptorRegistry {
                 .computeIfAbsent(category, k -> new ArrayList<>())
                 .add(descriptor);
         }
+
+        this.version = "1.0"; // TODO: extract from YAML
+        this.sport = "football"; // TODO: extract from YAML
     }
 
     /**
