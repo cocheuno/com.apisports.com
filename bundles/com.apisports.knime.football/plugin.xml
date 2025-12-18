@@ -2,6 +2,9 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension point="org.knime.workbench.repository.nodes">
+      <!-- Reference Data -->
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.referencedata.ReferenceDataLoaderNodeFactory"/>
       <!-- Universal Node (Prototype) -->
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.universal.UniversalNodeFactory"/>
