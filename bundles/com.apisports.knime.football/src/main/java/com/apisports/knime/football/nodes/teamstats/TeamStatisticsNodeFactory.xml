@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./teamstats.png" type="Manipulator">
+    <name>Team Statistics Query</name>
+
+    <shortDescription>
+        Query team statistics using dropdown selections
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+                This node queries team statistics from the API-Sports API using dropdown-based
+                selections instead of JSON input. Select a league, season, and team from the
+                dropdown menus to build your query.
+            </p>
+            <p>
+                The node uses reference data from the Reference Data Loader to populate the
+                dropdowns (note: current prototype version uses hardcoded major leagues).
+                The output is a single-row table containing all team statistics fields.
+            </p>
+            <p>
+                <b>Inputs:</b>
+                <ul>
+                    <li>Port 0: Reference Data (from Reference Data Loader node)</li>
+                    <li>Port 1: API Connection (from API-Sports Connector)</li>
+                </ul>
+            </p>
+        </intro>
+
+        <option name="League">
+            Select the league for the team statistics query. Available options include
+            major European leagues (Premier League, La Liga, Bundesliga, Serie A, Ligue 1).
+        </option>
+
+        <option name="Season">
+            Select the season year (2020-2024).
+        </option>
+
+        <option name="Team">
+            Select the team to query. Teams shown are for the selected league.
+            (Note: Current prototype shows major teams from Premier League by default)
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="Reference Data">
+            Reference data from Reference Data Loader node
+        </inPort>
+        <inPort index="1" name="API Connection">
+            API-Sports connection from the API-Sports Connector node
+        </inPort>
+        <outPort index="0" name="Team Statistics">
+            Table with one row containing team statistics (complex fields as JSON strings)
+        </outPort>
+    </ports>
+</knimeNode>

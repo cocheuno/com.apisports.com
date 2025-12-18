@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./referencedata.png" type="Source">
+    <name>Reference Data Loader</name>
+
+    <shortDescription>
+        Loads reference data (countries, leagues, teams, venues) from API-Sports
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+                This node loads reference data from the API-Sports API, including countries,
+                leagues, teams, and venues. The reference data is cached and can be used by
+                query nodes to populate dropdown selections for building queries.
+            </p>
+            <p>
+                The node outputs a ReferenceDataPortObject that contains all loaded reference
+                data. Connect this port to query nodes (Team Statistics, Fixtures, etc.) to
+                enable smart dropdown-based query building.
+            </p>
+            <p>
+                <b>Performance Note:</b> Loading teams can take significant time as it requires
+                calling the API for each league. By default, only teams from the first 10 leagues
+                are loaded. For full data, you may need to adjust rate limits and timeouts.
+            </p>
+        </intro>
+
+        <option name="Load Teams">
+            Enable loading of team data. This can take several minutes for many leagues.
+            Teams are loaded for major leagues only (first 10) to limit API calls.
+        </option>
+
+        <option name="Load Venues">
+            Enable loading of venue data. Not yet implemented.
+        </option>
+
+        <option name="Cache TTL (seconds)">
+            Time-to-live for cached reference data in seconds. Default is 86400 (24 hours).
+            Query nodes can check if the reference data is stale and prompt for refresh.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Sports Connector node
+        </inPort>
+        <outPort index="0" name="Reference Data">
+            Reference data containing countries, leagues, teams, and venues
+        </outPort>
+    </ports>
+</knimeNode>

@@ -2,10 +2,17 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension point="org.knime.workbench.repository.nodes">
+      <!-- Reference Data -->
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.referencedata.ReferenceDataLoaderNodeFactory"/>
       <!-- Universal Node (Prototype) -->
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.universal.UniversalNodeFactory"/>
-      <!-- Curated Nodes -->
+      <!-- Curated Query Nodes -->
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.teamstats.TeamStatisticsNodeFactory"/>
+      <!-- Legacy Nodes (deprecated) -->
+      <!--
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.leagues.FootballLeaguesNodeFactory"/>
       <node category-path="/carovex/apisports/football"
@@ -18,6 +25,7 @@
             factory-class="com.apisports.knime.football.nodes.stats.FootballStatsNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.predictions.FootballPredictionsNodeFactory"/>
+      -->
    </extension>
    <extension point="org.knime.workbench.repository.categories">
       <category level-id="football" name="Football" path="/carovex/apisports" icon="icons/football.png"/>
