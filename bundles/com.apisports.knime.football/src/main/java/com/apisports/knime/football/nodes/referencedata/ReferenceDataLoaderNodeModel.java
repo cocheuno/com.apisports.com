@@ -267,4 +267,18 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     protected void reset() {
         // Nothing to reset
     }
+
+    @Override
+    protected void loadInternals(final java.io.File nodeInternDir,
+                                 final org.knime.core.node.ExecutionMonitor exec)
+            throws java.io.IOException, org.knime.core.node.CanceledExecutionException {
+        // No internal state to load
+    }
+
+    @Override
+    protected void saveInternals(final java.io.File nodeInternDir,
+                                 final org.knime.core.node.ExecutionMonitor exec)
+            throws java.io.IOException, org.knime.core.node.CanceledExecutionException {
+        // No internal state to save
+    }
 }
