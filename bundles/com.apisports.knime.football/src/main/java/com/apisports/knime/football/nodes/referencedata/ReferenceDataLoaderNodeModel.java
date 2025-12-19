@@ -18,6 +18,7 @@ import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
+import org.knime.core.node.defaultnodesettings.SettingsModelDate;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.defaultnodesettings.SettingsModelStringArray;
@@ -46,6 +47,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     static final String CFGKEY_COUNTRY_FILTER = "countryFilter";
     static final String CFGKEY_DB_PATH = "dbPath";
     static final String CFGKEY_CLEAR_AND_RELOAD = "clearAndReload";
+    static final String CFGKEY_BEGIN_DATE = "beginDate";
+    static final String CFGKEY_END_DATE = "endDate";
+    static final String CFGKEY_SELECTED_SEASONS = "selectedSeasons";
 
     private final SettingsModelBoolean m_loadTeams =
         new SettingsModelBoolean(CFGKEY_LOAD_TEAMS, true);
@@ -59,6 +63,12 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         new SettingsModelString(CFGKEY_DB_PATH, getDefaultDbPath());
     private final SettingsModelBoolean m_clearAndReload =
         new SettingsModelBoolean(CFGKEY_CLEAR_AND_RELOAD, false);
+    private final SettingsModelDate m_beginDate =
+        new SettingsModelDate(CFGKEY_BEGIN_DATE, null);
+    private final SettingsModelDate m_endDate =
+        new SettingsModelDate(CFGKEY_END_DATE, null);
+    private final SettingsModelStringArray m_selectedSeasons =
+        new SettingsModelStringArray(CFGKEY_SELECTED_SEASONS, new String[0]);
 
     public static String getDefaultDbPath() {
         String userHome = System.getProperty("user.home");
@@ -127,8 +137,12 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             exec.setMessage("Loading seasons...");
             exec.setProgress(0.4);
             List<Season> allSeasons = loadSeasons(client, mapper, leaguesToStore, exec);
-            dao.upsertSeasons(allSeasons);
-            getLogger().info("Loaded " + allSeasons.size() + " seasons");
+
+            // Filter seasons by date range or selected seasons
+            List<Season> filteredSeasons = filterSeasonsByDateOrSelection(allSeasons);
+            dao.upsertSeasons(filteredSeasons);
+            getLogger().info("Loaded " + filteredSeasons.size() + " seasons (filtered from " +
+                            allSeasons.size() + " total)");
 
             // Load teams if enabled
             if (m_loadTeams.getBooleanValue()) {
@@ -156,6 +170,73 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             getLogger().info("Reference data successfully saved to " + dbPath);
 
             return new PortObject[]{output};
+        }
+    }
+
+    /**
+     * Filter seasons based on date range or selected seasons.
+     * Logic: If begin date is set, use date range. Otherwise, use selected seasons.
+     */
+    private List<Season> filterSeasonsByDateOrSelection(List<Season> allSeasons) throws Exception {
+        java.util.Date beginDate = m_beginDate.getDate();
+        java.util.Date endDate = m_endDate.getDate();
+        String[] selectedSeasons = m_selectedSeasons.getStringArrayValue();
+
+        // If begin date is set, filter by date range
+        if (beginDate != null) {
+            getLogger().info("Filtering seasons by date range: " + beginDate +
+                           (endDate != null ? " to " + endDate : " onwards"));
+
+            List<Season> filtered = new ArrayList<>();
+            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd");
+
+            for (Season season : allSeasons) {
+                try {
+                    // Parse season start date
+                    if (season.getStartDate() != null) {
+                        java.util.Date seasonStart = dateFormat.parse(season.getStartDate());
+
+                        // Check if season starts after or on begin date
+                        if (!seasonStart.before(beginDate)) {
+                            // If end date is set, check if season starts before or on end date
+                            if (endDate == null || !seasonStart.after(endDate)) {
+                                filtered.add(season);
+                            }
+                        }
+                    }
+                } catch (java.text.ParseException e) {
+                    getLogger().warn("Could not parse season start date: " + season.getStartDate());
+                }
+            }
+
+            return filtered;
+        }
+        // If seasons are selected, filter by year
+        else if (selectedSeasons.length > 0) {
+            Set<Integer> selectedYears = new HashSet<>();
+            for (String year : selectedSeasons) {
+                try {
+                    selectedYears.add(Integer.parseInt(year));
+                } catch (NumberFormatException e) {
+                    getLogger().warn("Invalid season year: " + year);
+                }
+            }
+
+            getLogger().info("Filtering seasons by years: " + selectedYears);
+
+            List<Season> filtered = new ArrayList<>();
+            for (Season season : allSeasons) {
+                if (selectedYears.contains(season.getYear())) {
+                    filtered.add(season);
+                }
+            }
+
+            return filtered;
+        }
+        // No filter - return all seasons
+        else {
+            getLogger().info("No season filter applied - loading all seasons from 2008+");
+            return allSeasons;
         }
     }
 
@@ -371,6 +452,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_countryFilter.saveSettingsTo(settings);
         m_dbPath.saveSettingsTo(settings);
         m_clearAndReload.saveSettingsTo(settings);
+        m_beginDate.saveSettingsTo(settings);
+        m_endDate.saveSettingsTo(settings);
+        m_selectedSeasons.saveSettingsTo(settings);
     }
 
     @Override
@@ -381,6 +465,16 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_countryFilter.validateSettings(settings);
         m_dbPath.validateSettings(settings);
         m_clearAndReload.validateSettings(settings);
+        // New settings - backwards compatible (don't validate if missing)
+        if (settings.containsKey(CFGKEY_BEGIN_DATE)) {
+            m_beginDate.validateSettings(settings);
+        }
+        if (settings.containsKey(CFGKEY_END_DATE)) {
+            m_endDate.validateSettings(settings);
+        }
+        if (settings.containsKey(CFGKEY_SELECTED_SEASONS)) {
+            m_selectedSeasons.validateSettings(settings);
+        }
     }
 
     @Override
@@ -391,6 +485,22 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_countryFilter.loadSettingsFrom(settings);
         m_dbPath.loadSettingsFrom(settings);
         m_clearAndReload.loadSettingsFrom(settings);
+        // New settings - backwards compatible
+        try {
+            m_beginDate.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            // Use default (null)
+        }
+        try {
+            m_endDate.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            // Use default (null)
+        }
+        try {
+            m_selectedSeasons.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            // Use default (empty array)
+        }
     }
 
     @Override
