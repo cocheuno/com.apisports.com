@@ -1,10 +1,12 @@
 package com.apisports.knime.football.nodes.referencedata;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
+import com.apisports.knime.core.dao.ReferenceDAO;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
 import com.apisports.knime.port.ReferenceData;
 import com.apisports.knime.port.ReferenceData.Country;
 import com.apisports.knime.port.ReferenceData.League;
+import com.apisports.knime.port.ReferenceData.Season;
 import com.apisports.knime.port.ReferenceData.Team;
 import com.apisports.knime.port.ReferenceData.Venue;
 import com.apisports.knime.port.ReferenceDataPortObject;
@@ -17,14 +19,20 @@ import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
+import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.defaultnodesettings.SettingsModelStringArray;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * NodeModel for Reference Data Loader.
@@ -35,6 +43,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     static final String CFGKEY_LOAD_TEAMS = "loadTeams";
     static final String CFGKEY_LOAD_VENUES = "loadVenues";
     static final String CFGKEY_CACHE_TTL = "cacheTtl";
+    static final String CFGKEY_COUNTRY_FILTER = "countryFilter";
+    static final String CFGKEY_DB_PATH = "dbPath";
+    static final String CFGKEY_CLEAR_AND_RELOAD = "clearAndReload";
 
     private final SettingsModelBoolean m_loadTeams =
         new SettingsModelBoolean(CFGKEY_LOAD_TEAMS, true);
@@ -42,6 +53,17 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         new SettingsModelBoolean(CFGKEY_LOAD_VENUES, false);
     private final SettingsModelInteger m_cacheTtl =
         new SettingsModelInteger(CFGKEY_CACHE_TTL, 86400); // 24 hours default
+    private final SettingsModelStringArray m_countryFilter =
+        new SettingsModelStringArray(CFGKEY_COUNTRY_FILTER, new String[0]);
+    private final SettingsModelString m_dbPath =
+        new SettingsModelString(CFGKEY_DB_PATH, getDefaultDbPath());
+    private final SettingsModelBoolean m_clearAndReload =
+        new SettingsModelBoolean(CFGKEY_CLEAR_AND_RELOAD, false);
+
+    public static String getDefaultDbPath() {
+        String userHome = System.getProperty("user.home");
+        return userHome + File.separator + ".apisports" + File.separator + "football_ref.db";
+    }
 
     protected ReferenceDataLoaderNodeModel() {
         super(new PortType[]{ApiSportsConnectionPortObject.TYPE},
@@ -55,42 +77,86 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         ApiSportsHttpClient client = connectionPort.getClient();
         ObjectMapper mapper = new ObjectMapper();
 
-        // Load countries
-        exec.setMessage("Loading countries...");
-        exec.setProgress(0.1);
-        List<Country> countries = loadCountries(client, mapper);
-        getLogger().info("Loaded " + countries.size() + " countries");
+        // Initialize SQLite database
+        String dbPath = m_dbPath.getStringValue();
+        exec.setMessage("Initializing database at " + dbPath + "...");
+        exec.setProgress(0.05);
 
-        // Load leagues
-        exec.setMessage("Loading leagues...");
-        exec.setProgress(0.3);
-        List<League> leagues = loadLeagues(client, mapper);
-        getLogger().info("Loaded " + leagues.size() + " leagues");
+        try (ReferenceDAO dao = new ReferenceDAO(dbPath)) {
+            // Clear database if requested
+            if (m_clearAndReload.getBooleanValue()) {
+                exec.setMessage("Clearing existing data...");
+                dao.clearAll();
+                getLogger().info("Database cleared");
+            }
 
-        // Load teams if enabled
-        List<Team> teams = new ArrayList<>();
-        if (m_loadTeams.getBooleanValue()) {
-            exec.setMessage("Loading teams...");
-            exec.setProgress(0.5);
-            teams = loadTeams(client, mapper, leagues, exec);
-            getLogger().info("Loaded " + teams.size() + " teams");
+            // Get country filter
+            Set<String> countryFilter = new HashSet<>(Arrays.asList(m_countryFilter.getStringArrayValue()));
+            boolean hasCountryFilter = !countryFilter.isEmpty();
+
+            // Load countries
+            exec.setMessage("Loading countries...");
+            exec.setProgress(0.1);
+            List<Country> countries = loadCountries(client, mapper);
+            dao.upsertCountries(countries);
+            getLogger().info("Loaded " + countries.size() + " countries");
+
+            // Load all leagues (we'll filter later)
+            exec.setMessage("Loading leagues...");
+            exec.setProgress(0.2);
+            List<League> allLeagues = loadLeagues(client, mapper);
+
+            // Filter leagues by country if filter is set
+            List<League> leaguesToStore = new ArrayList<>();
+            if (hasCountryFilter) {
+                for (League league : allLeagues) {
+                    if (countryFilter.contains(league.getCountryName())) {
+                        leaguesToStore.add(league);
+                    }
+                }
+                getLogger().info("Filtered " + leaguesToStore.size() + " leagues from " +
+                                allLeagues.size() + " (countries: " + String.join(", ", countryFilter) + ")");
+            } else {
+                leaguesToStore = allLeagues;
+                getLogger().info("Loaded " + allLeagues.size() + " leagues (no filter)");
+            }
+
+            dao.upsertLeagues(leaguesToStore);
+
+            // Load seasons for filtered leagues
+            exec.setMessage("Loading seasons...");
+            exec.setProgress(0.4);
+            List<Season> allSeasons = loadSeasons(client, mapper, leaguesToStore, exec);
+            dao.upsertSeasons(allSeasons);
+            getLogger().info("Loaded " + allSeasons.size() + " seasons");
+
+            // Load teams if enabled
+            if (m_loadTeams.getBooleanValue()) {
+                exec.setMessage("Loading teams...");
+                exec.setProgress(0.6);
+                List<Team> teams = loadTeams(client, mapper, leaguesToStore, exec);
+                dao.upsertTeams(teams);
+                getLogger().info("Loaded " + teams.size() + " teams");
+            }
+
+            // Load venues if enabled (not yet implemented)
+            if (m_loadVenues.getBooleanValue()) {
+                exec.setMessage("Loading venues...");
+                exec.setProgress(0.8);
+                getLogger().warn("Venue loading not yet implemented");
+            }
+
+            exec.setMessage("Finalizing...");
+            exec.setProgress(0.95);
+
+            // Create port object with DB path
+            ReferenceDataPortObject output = new ReferenceDataPortObject(dbPath);
+
+            exec.setProgress(1.0);
+            getLogger().info("Reference data successfully saved to " + dbPath);
+
+            return new PortObject[]{output};
         }
-
-        // Load venues if enabled
-        List<Venue> venues = new ArrayList<>();
-        if (m_loadVenues.getBooleanValue()) {
-            exec.setMessage("Loading venues...");
-            exec.setProgress(0.8);
-            venues = loadVenues(client, mapper);
-            getLogger().info("Loaded " + venues.size() + " venues");
-        }
-
-        // Create reference data
-        exec.setProgress(1.0);
-        ReferenceData refData = new ReferenceData(countries, leagues, teams, venues);
-        ReferenceDataPortObject output = new ReferenceDataPortObject(refData);
-
-        return new PortObject[]{output};
     }
 
     /**
@@ -154,6 +220,61 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         }
 
         return leagues;
+    }
+
+    /**
+     * Load seasons from /leagues endpoint for each league.
+     * Seasons are embedded in the league response.
+     */
+    private List<Season> loadSeasons(ApiSportsHttpClient client, ObjectMapper mapper,
+                                      List<League> leagues, ExecutionContext exec) throws Exception {
+        List<Season> allSeasons = new ArrayList<>();
+
+        for (int i = 0; i < leagues.size(); i++) {
+            exec.checkCanceled();
+            League league = leagues.get(i);
+
+            Map<String, String> params = new HashMap<>();
+            params.put("id", String.valueOf(league.getId()));
+
+            try {
+                String response = client.get("/leagues", params);
+                JsonNode root = mapper.readTree(response);
+                JsonNode responseArray = root.get("response");
+
+                if (responseArray != null && responseArray.isArray() && responseArray.size() > 0) {
+                    JsonNode leagueData = responseArray.get(0);
+                    JsonNode seasonsArray = leagueData.get("seasons");
+
+                    if (seasonsArray != null && seasonsArray.isArray()) {
+                        for (JsonNode seasonNode : seasonsArray) {
+                            int year = seasonNode.has("year") ? seasonNode.get("year").asInt() : 0;
+                            String start = seasonNode.has("start") ? seasonNode.get("start").asText() : null;
+                            String end = seasonNode.has("end") ? seasonNode.get("end").asText() : null;
+                            boolean current = seasonNode.has("current") && seasonNode.get("current").asBoolean();
+
+                            if (year >= 2008) { // Filter seasons from 2008 onwards
+                                allSeasons.add(new Season(league.getId(), year, start, end, current));
+                            }
+                        }
+                    }
+                }
+
+                // Small delay to avoid rate limiting
+                Thread.sleep(100);
+
+            } catch (Exception e) {
+                getLogger().warn("Failed to load seasons for league " + league.getName() + ": " + e.getMessage());
+            }
+
+            // Update progress
+            if (i % 10 == 0) {
+                double progress = 0.4 + (0.2 * ((double) i / leagues.size()));
+                exec.setProgress(progress, "Loading seasons... (" + (i + 1) + "/" + leagues.size() + ")");
+            }
+        }
+
+        return allSeasons;
     }
 
     /**
@@ -247,6 +368,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_loadTeams.saveSettingsTo(settings);
         m_loadVenues.saveSettingsTo(settings);
         m_cacheTtl.saveSettingsTo(settings);
+        m_countryFilter.saveSettingsTo(settings);
+        m_dbPath.saveSettingsTo(settings);
+        m_clearAndReload.saveSettingsTo(settings);
     }
 
     @Override
@@ -254,6 +378,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_loadTeams.validateSettings(settings);
         m_loadVenues.validateSettings(settings);
         m_cacheTtl.validateSettings(settings);
+        m_countryFilter.validateSettings(settings);
+        m_dbPath.validateSettings(settings);
+        m_clearAndReload.validateSettings(settings);
     }
 
     @Override
@@ -261,6 +388,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_loadTeams.loadSettingsFrom(settings);
         m_loadVenues.loadSettingsFrom(settings);
         m_cacheTtl.loadSettingsFrom(settings);
+        m_countryFilter.loadSettingsFrom(settings);
+        m_dbPath.loadSettingsFrom(settings);
+        m_clearAndReload.loadSettingsFrom(settings);
     }
 
     @Override

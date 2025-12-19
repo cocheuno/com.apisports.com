@@ -12,38 +12,19 @@ import java.util.Objects;
 public class ReferenceDataPortObjectSpec implements PortObjectSpec {
 
     private final long loadedTimestamp;
-    private final int countryCount;
-    private final int leagueCount;
-    private final int teamCount;
-    private final int venueCount;
+    private final String dbPath;
 
-    public ReferenceDataPortObjectSpec(long loadedTimestamp, int countryCount,
-                                      int leagueCount, int teamCount, int venueCount) {
+    public ReferenceDataPortObjectSpec(long loadedTimestamp, String dbPath) {
         this.loadedTimestamp = loadedTimestamp;
-        this.countryCount = countryCount;
-        this.leagueCount = leagueCount;
-        this.teamCount = teamCount;
-        this.venueCount = venueCount;
+        this.dbPath = dbPath;
     }
 
     public long getLoadedTimestamp() {
         return loadedTimestamp;
     }
 
-    public int getCountryCount() {
-        return countryCount;
-    }
-
-    public int getLeagueCount() {
-        return leagueCount;
-    }
-
-    public int getTeamCount() {
-        return teamCount;
-    }
-
-    public int getVenueCount() {
-        return venueCount;
+    public String getDbPath() {
+        return dbPath;
     }
 
     /**
@@ -73,20 +54,16 @@ public class ReferenceDataPortObjectSpec implements PortObjectSpec {
         }
         ReferenceDataPortObjectSpec other = (ReferenceDataPortObjectSpec) obj;
         return loadedTimestamp == other.loadedTimestamp
-            && countryCount == other.countryCount
-            && leagueCount == other.leagueCount
-            && teamCount == other.teamCount
-            && venueCount == other.venueCount;
+            && Objects.equals(dbPath, other.dbPath);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(loadedTimestamp, countryCount, leagueCount, teamCount, venueCount);
+        return Objects.hash(loadedTimestamp, dbPath);
     }
 
     @Override
     public String toString() {
-        return String.format("ReferenceData[countries=%d, leagues=%d, teams=%d, venues=%d]",
-            countryCount, leagueCount, teamCount, venueCount);
+        return String.format("ReferenceData[dbPath=%s, loaded=%d]", dbPath, loadedTimestamp);
     }
 }
