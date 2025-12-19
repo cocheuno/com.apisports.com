@@ -18,7 +18,6 @@ import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
-import org.knime.core.node.defaultnodesettings.SettingsModelDate;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.defaultnodesettings.SettingsModelStringArray;
@@ -63,10 +62,10 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         new SettingsModelString(CFGKEY_DB_PATH, getDefaultDbPath());
     private final SettingsModelBoolean m_clearAndReload =
         new SettingsModelBoolean(CFGKEY_CLEAR_AND_RELOAD, false);
-    private final SettingsModelDate m_beginDate =
-        new SettingsModelDate(CFGKEY_BEGIN_DATE, null);
-    private final SettingsModelDate m_endDate =
-        new SettingsModelDate(CFGKEY_END_DATE, null);
+    private final SettingsModelString m_beginDate =
+        new SettingsModelString(CFGKEY_BEGIN_DATE, "");
+    private final SettingsModelString m_endDate =
+        new SettingsModelString(CFGKEY_END_DATE, "");
     private final SettingsModelStringArray m_selectedSeasons =
         new SettingsModelStringArray(CFGKEY_SELECTED_SEASONS, new String[0]);
 
@@ -178,17 +177,24 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
      * Logic: If begin date is set, use date range. Otherwise, use selected seasons.
      */
     private List<Season> filterSeasonsByDateOrSelection(List<Season> allSeasons) throws Exception {
-        java.util.Date beginDate = m_beginDate.getDate();
-        java.util.Date endDate = m_endDate.getDate();
+        String beginDateStr = m_beginDate.getStringValue();
+        String endDateStr = m_endDate.getStringValue();
         String[] selectedSeasons = m_selectedSeasons.getStringArrayValue();
 
-        // If begin date is set, filter by date range
-        if (beginDate != null) {
-            getLogger().info("Filtering seasons by date range: " + beginDate +
-                           (endDate != null ? " to " + endDate : " onwards"));
+        // If begin date is set (not empty), filter by date range
+        if (beginDateStr != null && !beginDateStr.trim().isEmpty()) {
+            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd");
+            java.util.Date beginDate = dateFormat.parse(beginDateStr);
+            java.util.Date endDate = null;
+
+            if (endDateStr != null && !endDateStr.trim().isEmpty()) {
+                endDate = dateFormat.parse(endDateStr);
+            }
+
+            getLogger().info("Filtering seasons by date range: " + beginDateStr +
+                           (endDate != null ? " to " + endDateStr : " onwards"));
 
             List<Season> filtered = new ArrayList<>();
-            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd");
 
             for (Season season : allSeasons) {
                 try {
