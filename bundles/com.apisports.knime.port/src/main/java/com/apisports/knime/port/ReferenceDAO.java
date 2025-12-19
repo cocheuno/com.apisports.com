@@ -1,6 +1,5 @@
-package com.apisports.knime.core.dao;
+package com.apisports.knime.port;
 
-import com.apisports.knime.port.ReferenceData;
 import com.apisports.knime.port.ReferenceData.Country;
 import com.apisports.knime.port.ReferenceData.League;
 import com.apisports.knime.port.ReferenceData.Season;
