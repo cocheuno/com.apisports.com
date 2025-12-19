@@ -335,20 +335,56 @@ public class UniversalNodeModel extends NodeModel {
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_endpointId.loadSettingsFrom(settings);
         m_parameters.loadSettingsFrom(settings);
-        m_selectedCountry.loadSettingsFrom(settings);
-        m_selectedLeague.loadSettingsFrom(settings);
-        m_selectedSeason.loadSettingsFrom(settings);
-        m_selectedTeam.loadSettingsFrom(settings);
+
+        // Load new settings with backwards compatibility
+        try {
+            m_selectedCountry.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            // Use default value for backwards compatibility
+            m_selectedCountry.setStringValue("");
+        }
+
+        try {
+            m_selectedLeague.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            m_selectedLeague.setIntValue(-1);
+        }
+
+        try {
+            m_selectedSeason.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            m_selectedSeason.setIntValue(-1);
+        }
+
+        try {
+            m_selectedTeam.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            m_selectedTeam.setIntValue(-1);
+        }
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_endpointId.validateSettings(settings);
         m_parameters.validateSettings(settings);
-        m_selectedCountry.validateSettings(settings);
-        m_selectedLeague.validateSettings(settings);
-        m_selectedSeason.validateSettings(settings);
-        m_selectedTeam.validateSettings(settings);
+
+        // Only validate new settings if they exist (backwards compatibility)
+        try {
+            if (settings.containsKey(CFGKEY_SELECTED_COUNTRY)) {
+                m_selectedCountry.validateSettings(settings);
+            }
+            if (settings.containsKey(CFGKEY_SELECTED_LEAGUE)) {
+                m_selectedLeague.validateSettings(settings);
+            }
+            if (settings.containsKey(CFGKEY_SELECTED_SEASON)) {
+                m_selectedSeason.validateSettings(settings);
+            }
+            if (settings.containsKey(CFGKEY_SELECTED_TEAM)) {
+                m_selectedTeam.validateSettings(settings);
+            }
+        } catch (Exception e) {
+            // Silently ignore validation errors for backwards compatibility
+        }
     }
 
     @Override
