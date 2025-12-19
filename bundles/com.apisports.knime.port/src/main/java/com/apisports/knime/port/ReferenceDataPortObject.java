@@ -5,10 +5,11 @@ import org.knime.core.node.port.PortType;
 import org.knime.core.node.port.PortTypeRegistry;
 
 import javax.swing.JComponent;
+import java.io.File;
 import java.util.Objects;
 
 /**
- * Port object containing reference data (countries, leagues, teams, venues).
+ * Port object containing reference to SQLite database with reference data.
  * Used to populate UI dropdowns in query nodes and share cached reference data.
  */
 public class ReferenceDataPortObject implements PortObject {
@@ -20,16 +21,32 @@ public class ReferenceDataPortObject implements PortObject {
         .getPortType(ReferenceDataPortObject.class);
 
     private final ReferenceDataPortObjectSpec spec;
-    private final ReferenceData data;
+    private final String dbPath;
 
+    /**
+     * Constructor for SQLite-backed reference data.
+     * @param dbPath Path to the SQLite database file
+     */
+    public ReferenceDataPortObject(String dbPath) {
+        this.dbPath = Objects.requireNonNull(dbPath, "Database path cannot be null");
+        File dbFile = new File(dbPath);
+        this.spec = new ReferenceDataPortObjectSpec(
+            dbFile.exists() ? dbFile.lastModified() : System.currentTimeMillis(),
+            dbPath
+        );
+    }
+
+    /**
+     * Legacy constructor for in-memory reference data (backward compatibility).
+     * @deprecated Use constructor with dbPath instead
+     */
+    @Deprecated
     public ReferenceDataPortObject(ReferenceData data) {
-        this.data = Objects.requireNonNull(data, "Reference data cannot be null");
+        Objects.requireNonNull(data, "Reference data cannot be null");
+        this.dbPath = null; // In-memory mode (not recommended)
         this.spec = new ReferenceDataPortObjectSpec(
             data.getLoadedTimestamp(),
-            data.getCountries().size(),
-            data.getLeagues().size(),
-            data.getTeams().size(),
-            data.getVenues().size()
+            null
         );
     }
 
@@ -39,19 +56,39 @@ public class ReferenceDataPortObject implements PortObject {
     }
 
     /**
-     * Get the reference data.
+     * Get the database file path.
      *
-     * @return The reference data
+     * @return The path to the SQLite database file
      */
-    public ReferenceData getData() {
-        return data;
+    public String getDbPath() {
+        return dbPath;
+    }
+
+    /**
+     * Check if database file exists.
+     *
+     * @return true if the database file exists
+     */
+    public boolean databaseExists() {
+        if (dbPath == null) {
+            return false;
+        }
+        return new File(dbPath).exists();
     }
 
     @Override
     public String getSummary() {
-        return String.format("Reference Data: %d countries, %d leagues, %d teams, %d venues",
-            spec.getCountryCount(), spec.getLeagueCount(),
-            spec.getTeamCount(), spec.getVenueCount());
+        if (dbPath != null) {
+            File dbFile = new File(dbPath);
+            if (dbFile.exists()) {
+                long sizeKB = dbFile.length() / 1024;
+                return String.format("Reference Data (SQLite): %s (%.1f KB)",
+                    dbFile.getName(), sizeKB / 1024.0);
+            } else {
+                return "Reference Data (SQLite): " + dbPath + " (not found)";
+            }
+        }
+        return "Reference Data (in-memory - deprecated)";
     }
 
     @Override
@@ -68,11 +105,11 @@ public class ReferenceDataPortObject implements PortObject {
             return false;
         }
         ReferenceDataPortObject other = (ReferenceDataPortObject) obj;
-        return spec.equals(other.spec);
+        return Objects.equals(dbPath, other.dbPath);
     }
 
     @Override
     public int hashCode() {
-        return spec.hashCode();
+        return Objects.hash(dbPath);
     }
 }

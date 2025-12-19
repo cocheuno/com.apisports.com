@@ -17,15 +17,24 @@ public class ReferenceData implements Serializable {
     private final List<League> leagues;
     private final List<Team> teams;
     private final List<Venue> venues;
+    private final List<Season> seasons;
     private final long loadedTimestamp;
 
     public ReferenceData(List<Country> countries, List<League> leagues,
-                        List<Team> teams, List<Venue> venues) {
+                        List<Team> teams, List<Venue> venues, List<Season> seasons) {
         this.countries = countries != null ? new ArrayList<>(countries) : new ArrayList<>();
         this.leagues = leagues != null ? new ArrayList<>(leagues) : new ArrayList<>();
         this.teams = teams != null ? new ArrayList<>(teams) : new ArrayList<>();
         this.venues = venues != null ? new ArrayList<>(venues) : new ArrayList<>();
+        this.seasons = seasons != null ? new ArrayList<>(seasons) : new ArrayList<>();
         this.loadedTimestamp = System.currentTimeMillis();
+    }
+
+    // Backward compatibility constructor
+    @Deprecated
+    public ReferenceData(List<Country> countries, List<League> leagues,
+                        List<Team> teams, List<Venue> venues) {
+        this(countries, leagues, teams, venues, new ArrayList<>());
     }
 
     public List<Country> getCountries() {
@@ -42,6 +51,10 @@ public class ReferenceData implements Serializable {
 
     public List<Venue> getVenues() {
         return new ArrayList<>(venues);
+    }
+
+    public List<Season> getSeasons() {
+        return new ArrayList<>(seasons);
     }
 
     public long getLoadedTimestamp() {
@@ -69,6 +82,19 @@ public class ReferenceData implements Serializable {
         for (Team team : teams) {
             if (team.getLeagueIds().contains(leagueId)) {
                 result.add(team);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get seasons for a specific league.
+     */
+    public List<Season> getSeasonsForLeague(int leagueId) {
+        List<Season> result = new ArrayList<>();
+        for (Season season : seasons) {
+            if (season.getLeagueId() == leagueId) {
+                result.add(season);
             }
         }
         return result;
@@ -179,5 +205,45 @@ public class ReferenceData implements Serializable {
 
         @Override
         public String toString() { return name; }
+    }
+
+    public static class Season implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private final int leagueId;
+        private final int year;
+        private final String startDate;
+        private final String endDate;
+        private final boolean current;
+
+        public Season(int leagueId, int year, String startDate, String endDate, boolean current) {
+            this.leagueId = leagueId;
+            this.year = year;
+            this.startDate = startDate;
+            this.endDate = endDate;
+            this.current = current;
+        }
+
+        public int getLeagueId() { return leagueId; }
+        public int getYear() { return year; }
+        public String getStartDate() { return startDate; }
+        public String getEndDate() { return endDate; }
+        public boolean isCurrent() { return current; }
+
+        @Override
+        public String toString() { return String.valueOf(year); }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Season season = (Season) o;
+            return leagueId == season.leagueId && year == season.year;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(leagueId, year);
+        }
     }
 }
