@@ -25,7 +25,6 @@ import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
-import org.knime.core.node.defaultnodesettings.SettingsModelIntegerArray;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
@@ -50,14 +49,14 @@ public class UniversalNodeModel extends NodeModel {
     static final String CFGKEY_PARAMETERS = "parameters";
     static final String CFGKEY_SELECTED_COUNTRY = "selectedCountry";
     static final String CFGKEY_SELECTED_LEAGUE = "selectedLeague";
-    static final String CFGKEY_SELECTED_SEASONS = "selectedSeasons";
+    static final String CFGKEY_SELECTED_SEASON = "selectedSeason";
     static final String CFGKEY_SELECTED_TEAM = "selectedTeam";
 
     private final SettingsModelString m_endpointId = new SettingsModelString(CFGKEY_ENDPOINT_ID, "");
     private final SettingsModelString m_parameters = new SettingsModelString(CFGKEY_PARAMETERS, "{}");
     private final SettingsModelString m_selectedCountry = new SettingsModelString(CFGKEY_SELECTED_COUNTRY, "");
     private final SettingsModelInteger m_selectedLeague = new SettingsModelInteger(CFGKEY_SELECTED_LEAGUE, -1);
-    private final SettingsModelIntegerArray m_selectedSeasons = new SettingsModelIntegerArray(CFGKEY_SELECTED_SEASONS, new int[0]);
+    private final SettingsModelInteger m_selectedSeason = new SettingsModelInteger(CFGKEY_SELECTED_SEASON, -1);
     private final SettingsModelInteger m_selectedTeam = new SettingsModelInteger(CFGKEY_SELECTED_TEAM, -1);
 
     protected UniversalNodeModel() {
@@ -114,10 +113,10 @@ public class UniversalNodeModel extends NodeModel {
             params.put("league", String.valueOf(leagueId));
         }
 
-        // Add season if selected (use first season from multi-select)
-        int[] seasons = m_selectedSeasons.getIntArrayValue();
-        if (seasons != null && seasons.length > 0) {
-            params.put("season", String.valueOf(seasons[0]));
+        // Add season if selected
+        int season = m_selectedSeason.getIntValue();
+        if (season > 0) {
+            params.put("season", String.valueOf(season));
         }
 
         // Add team if selected
@@ -328,7 +327,7 @@ public class UniversalNodeModel extends NodeModel {
         m_parameters.saveSettingsTo(settings);
         m_selectedCountry.saveSettingsTo(settings);
         m_selectedLeague.saveSettingsTo(settings);
-        m_selectedSeasons.saveSettingsTo(settings);
+        m_selectedSeason.saveSettingsTo(settings);
         m_selectedTeam.saveSettingsTo(settings);
     }
 
@@ -338,7 +337,7 @@ public class UniversalNodeModel extends NodeModel {
         m_parameters.loadSettingsFrom(settings);
         m_selectedCountry.loadSettingsFrom(settings);
         m_selectedLeague.loadSettingsFrom(settings);
-        m_selectedSeasons.loadSettingsFrom(settings);
+        m_selectedSeason.loadSettingsFrom(settings);
         m_selectedTeam.loadSettingsFrom(settings);
     }
 
@@ -348,7 +347,7 @@ public class UniversalNodeModel extends NodeModel {
         m_parameters.validateSettings(settings);
         m_selectedCountry.validateSettings(settings);
         m_selectedLeague.validateSettings(settings);
-        m_selectedSeasons.validateSettings(settings);
+        m_selectedSeason.validateSettings(settings);
         m_selectedTeam.validateSettings(settings);
     }
 
