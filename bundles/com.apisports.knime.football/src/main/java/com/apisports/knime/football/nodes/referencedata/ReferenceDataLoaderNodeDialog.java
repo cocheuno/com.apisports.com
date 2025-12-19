@@ -2,13 +2,12 @@ package com.apisports.knime.football.nodes.referencedata;
 
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
-import org.knime.core.node.defaultnodesettings.DialogComponentDate;
+import org.knime.core.node.defaultnodesettings.DialogComponentDateTimeSelection;
 import org.knime.core.node.defaultnodesettings.DialogComponentLabel;
 import org.knime.core.node.defaultnodesettings.DialogComponentNumber;
 import org.knime.core.node.defaultnodesettings.DialogComponentString;
 import org.knime.core.node.defaultnodesettings.DialogComponentStringListSelection;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
-import org.knime.core.node.defaultnodesettings.SettingsModelDate;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.defaultnodesettings.SettingsModelStringArray;
@@ -48,13 +47,15 @@ public class ReferenceDataLoaderNodeDialog extends DefaultNodeSettingsPane {
         addDialogComponent(new DialogComponentLabel(
             "Date Range: Specify beginning date (required) and optional end date"));
 
-        addDialogComponent(new DialogComponentDate(
-            new SettingsModelDate(ReferenceDataLoaderNodeModel.CFGKEY_BEGIN_DATE, null),
-            "Beginning Date:"));
+        addDialogComponent(new DialogComponentDateTimeSelection(
+            new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_BEGIN_DATE, ""),
+            "Beginning Date:",
+            org.knime.core.node.defaultnodesettings.DialogComponentDateTimeSelection.DisplayOption.SHOW_DATE_ONLY));
 
-        addDialogComponent(new DialogComponentDate(
-            new SettingsModelDate(ReferenceDataLoaderNodeModel.CFGKEY_END_DATE, null),
-            "End Date (optional):"));
+        addDialogComponent(new DialogComponentDateTimeSelection(
+            new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_END_DATE, ""),
+            "End Date (optional):",
+            org.knime.core.node.defaultnodesettings.DialogComponentDateTimeSelection.DisplayOption.SHOW_DATE_ONLY));
 
         addDialogComponent(new DialogComponentLabel(
             "OR select specific seasons (years):"));
