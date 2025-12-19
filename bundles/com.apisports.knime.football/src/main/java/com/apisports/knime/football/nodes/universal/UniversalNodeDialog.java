@@ -1,7 +1,7 @@
 package com.apisports.knime.football.nodes.universal;
 
-import com.apisports.knime.core.dao.ReferenceDAO;
 import com.apisports.knime.core.descriptor.DescriptorRegistry;
+import com.apisports.knime.port.ReferenceDAO;
 import com.apisports.knime.core.descriptor.EndpointDescriptor;
 import com.apisports.knime.port.ReferenceData;
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;

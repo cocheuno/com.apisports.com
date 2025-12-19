@@ -1,8 +1,8 @@
 package com.apisports.knime.football.nodes.referencedata;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
-import com.apisports.knime.core.dao.ReferenceDAO;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDAO;
 import com.apisports.knime.port.ReferenceData;
 import com.apisports.knime.port.ReferenceData.Country;
 import com.apisports.knime.port.ReferenceData.League;

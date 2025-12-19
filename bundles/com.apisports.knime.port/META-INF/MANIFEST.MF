@@ -8,5 +8,6 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)",
  com.apisports.knime.core;bundle-version="1.0.0"
 Export-Package: com.apisports.knime.port
-Bundle-ClassPath: .
+Bundle-ClassPath: .,
+ lib/sqlite-jdbc-3.43.0.0.jar
 Automatic-Module-Name: com.apisports.knime.port
