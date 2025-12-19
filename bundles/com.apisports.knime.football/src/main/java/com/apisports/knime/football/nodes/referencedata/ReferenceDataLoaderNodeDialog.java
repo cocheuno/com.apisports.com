@@ -2,8 +2,9 @@ package com.apisports.knime.football.nodes.referencedata;
 
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
-import org.knime.core.node.defaultnodesettings.DialogComponentFileChooser;
+import org.knime.core.node.defaultnodesettings.DialogComponentLabel;
 import org.knime.core.node.defaultnodesettings.DialogComponentNumber;
+import org.knime.core.node.defaultnodesettings.DialogComponentString;
 import org.knime.core.node.defaultnodesettings.DialogComponentStringListSelection;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
@@ -23,12 +24,15 @@ public class ReferenceDataLoaderNodeDialog extends DefaultNodeSettingsPane {
 
         createNewGroup("Database Configuration");
 
-        addDialogComponent(new DialogComponentFileChooser(
+        addDialogComponent(new DialogComponentLabel(
+            "Database file path (will be auto-created on first execution):"));
+
+        addDialogComponent(new DialogComponentString(
             new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_DB_PATH,
                 ReferenceDataLoaderNodeModel.getDefaultDbPath()),
-            "history-db-path",
-            0,
-            ".db"));
+            "Database Path:",
+            true,
+            60));
 
         addDialogComponent(new DialogComponentBoolean(
             new SettingsModelBoolean(ReferenceDataLoaderNodeModel.CFGKEY_CLEAR_AND_RELOAD, false),
