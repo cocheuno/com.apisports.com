@@ -2,7 +2,6 @@ package com.apisports.knime.football.nodes.referencedata;
 
 import org.knime.core.node.defaultnodesettings.DefaultNodeSettingsPane;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
-import org.knime.core.node.defaultnodesettings.DialogComponentDateTimeSelection;
 import org.knime.core.node.defaultnodesettings.DialogComponentLabel;
 import org.knime.core.node.defaultnodesettings.DialogComponentNumber;
 import org.knime.core.node.defaultnodesettings.DialogComponentString;
@@ -45,17 +44,19 @@ public class ReferenceDataLoaderNodeDialog extends DefaultNodeSettingsPane {
         createNewGroup("Time Period Filter (use EITHER date range OR seasons)");
 
         addDialogComponent(new DialogComponentLabel(
-            "Date Range: Specify beginning date (required) and optional end date"));
+            "Date Range: Enter dates in YYYY-MM-DD format (e.g., 2020-01-15)"));
 
-        addDialogComponent(new DialogComponentDateTimeSelection(
+        addDialogComponent(new DialogComponentString(
             new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_BEGIN_DATE, ""),
-            "Beginning Date:",
-            org.knime.core.node.defaultnodesettings.DialogComponentDateTimeSelection.DisplayOption.SHOW_DATE_ONLY));
+            "Beginning Date (YYYY-MM-DD):",
+            false,
+            20));
 
-        addDialogComponent(new DialogComponentDateTimeSelection(
+        addDialogComponent(new DialogComponentString(
             new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_END_DATE, ""),
-            "End Date (optional):",
-            org.knime.core.node.defaultnodesettings.DialogComponentDateTimeSelection.DisplayOption.SHOW_DATE_ONLY));
+            "End Date (optional, YYYY-MM-DD):",
+            false,
+            20));
 
         addDialogComponent(new DialogComponentLabel(
             "OR select specific seasons (years):"));
