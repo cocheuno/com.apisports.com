@@ -1,10 +1,12 @@
 package com.apisports.knime.football.nodes.universal;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
+import com.apisports.knime.core.dao.ReferenceDAO;
 import com.apisports.knime.core.descriptor.DescriptorRegistry;
 import com.apisports.knime.core.descriptor.EndpointDescriptor;
 import com.apisports.knime.core.descriptor.ParameterDescriptor;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDataPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.DataCell;
@@ -22,6 +24,8 @@ import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
+import org.knime.core.node.defaultnodesettings.SettingsModelIntegerArray;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
@@ -44,12 +48,23 @@ public class UniversalNodeModel extends NodeModel {
 
     static final String CFGKEY_ENDPOINT_ID = "endpointId";
     static final String CFGKEY_PARAMETERS = "parameters";
+    static final String CFGKEY_SELECTED_COUNTRY = "selectedCountry";
+    static final String CFGKEY_SELECTED_LEAGUE = "selectedLeague";
+    static final String CFGKEY_SELECTED_SEASONS = "selectedSeasons";
+    static final String CFGKEY_SELECTED_TEAM = "selectedTeam";
 
     private final SettingsModelString m_endpointId = new SettingsModelString(CFGKEY_ENDPOINT_ID, "");
     private final SettingsModelString m_parameters = new SettingsModelString(CFGKEY_PARAMETERS, "{}");
+    private final SettingsModelString m_selectedCountry = new SettingsModelString(CFGKEY_SELECTED_COUNTRY, "");
+    private final SettingsModelInteger m_selectedLeague = new SettingsModelInteger(CFGKEY_SELECTED_LEAGUE, -1);
+    private final SettingsModelIntegerArray m_selectedSeasons = new SettingsModelIntegerArray(CFGKEY_SELECTED_SEASONS, new int[0]);
+    private final SettingsModelInteger m_selectedTeam = new SettingsModelInteger(CFGKEY_SELECTED_TEAM, -1);
 
     protected UniversalNodeModel() {
-        super(new PortType[]{ApiSportsConnectionPortObject.TYPE},
+        super(new PortType[]{
+                  ApiSportsConnectionPortObject.TYPE,
+                  ReferenceDataPortObject.TYPE
+              },
               new PortType[]{BufferedDataTable.TYPE});
 
         // Initialize descriptor registry
@@ -69,7 +84,15 @@ public class UniversalNodeModel extends NodeModel {
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         ApiSportsConnectionPortObject connection = (ApiSportsConnectionPortObject) inObjects[0];
+        ReferenceDataPortObject refDataPort = (ReferenceDataPortObject) inObjects[1];
         ApiSportsHttpClient client = connection.getClient();
+
+        // Verify reference data database exists
+        if (!refDataPort.databaseExists()) {
+            throw new InvalidSettingsException(
+                "Reference database not found at: " + refDataPort.getDbPath() + ". " +
+                "Please execute the Reference Data Loader node first.");
+        }
 
         // Get endpoint descriptor
         String endpointId = m_endpointId.getStringValue();
@@ -82,14 +105,39 @@ public class UniversalNodeModel extends NodeModel {
             throw new InvalidSettingsException("Endpoint not found: " + endpointId);
         }
 
-        // Parse parameters - JSON can have integers, so parse as Object first then convert to String
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> paramsRaw = mapper.readValue(m_parameters.getStringValue(), HashMap.class);
-
-        // Convert all values to strings for API client
+        // Build parameters from dropdown selections
         Map<String, String> params = new HashMap<>();
-        for (Map.Entry<String, Object> entry : paramsRaw.entrySet()) {
-            params.put(entry.getKey(), entry.getValue() != null ? entry.getValue().toString() : "");
+
+        // Add league if selected
+        int leagueId = m_selectedLeague.getIntValue();
+        if (leagueId > 0) {
+            params.put("league", String.valueOf(leagueId));
+        }
+
+        // Add season if selected (use first season from multi-select)
+        int[] seasons = m_selectedSeasons.getIntArrayValue();
+        if (seasons != null && seasons.length > 0) {
+            params.put("season", String.valueOf(seasons[0]));
+        }
+
+        // Add team if selected
+        int teamId = m_selectedTeam.getIntValue();
+        if (teamId > 0) {
+            params.put("team", String.valueOf(teamId));
+        }
+
+        // Also parse JSON parameters for additional fields (e.g., date, status, etc.)
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            Map<String, Object> paramsRaw = mapper.readValue(m_parameters.getStringValue(), HashMap.class);
+            for (Map.Entry<String, Object> entry : paramsRaw.entrySet()) {
+                if (!params.containsKey(entry.getKey()) && entry.getValue() != null) {
+                    params.put(entry.getKey(), entry.getValue().toString());
+                }
+            }
+        } catch (Exception e) {
+            // Ignore JSON parse errors (empty or invalid JSON)
+            getLogger().debug("Could not parse additional parameters: " + e.getMessage());
         }
 
         // Validate parameters
@@ -278,18 +326,30 @@ public class UniversalNodeModel extends NodeModel {
     protected void saveSettingsTo(final NodeSettingsWO settings) {
         m_endpointId.saveSettingsTo(settings);
         m_parameters.saveSettingsTo(settings);
+        m_selectedCountry.saveSettingsTo(settings);
+        m_selectedLeague.saveSettingsTo(settings);
+        m_selectedSeasons.saveSettingsTo(settings);
+        m_selectedTeam.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_endpointId.loadSettingsFrom(settings);
         m_parameters.loadSettingsFrom(settings);
+        m_selectedCountry.loadSettingsFrom(settings);
+        m_selectedLeague.loadSettingsFrom(settings);
+        m_selectedSeasons.loadSettingsFrom(settings);
+        m_selectedTeam.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_endpointId.validateSettings(settings);
         m_parameters.validateSettings(settings);
+        m_selectedCountry.validateSettings(settings);
+        m_selectedLeague.validateSettings(settings);
+        m_selectedSeasons.validateSettings(settings);
+        m_selectedTeam.validateSettings(settings);
     }
 
     @Override
