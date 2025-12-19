@@ -87,9 +87,11 @@ public class UniversalNodeDialog extends DefaultNodeSettingsPane {
             "League ID (e.g., 39 for Premier League):",
             10));
 
-        // Season input (simple number for now, multi-select would require custom component)
-        addDialogComponent(new DialogComponentLabel(
-            "Season Year(s) - enter comma-separated years in Additional Parameters below"));
+        // Season input
+        addDialogComponent(new DialogComponentNumberEdit(
+            new SettingsModelInteger(UniversalNodeModel.CFGKEY_SELECTED_SEASON, -1),
+            "Season Year (e.g., 2024):",
+            10));
 
         // Team ID input
         addDialogComponent(new DialogComponentNumberEdit(
