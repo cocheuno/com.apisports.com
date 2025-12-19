@@ -1,8 +1,8 @@
 package com.apisports.knime.football.nodes.universal;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
-import com.apisports.knime.core.dao.ReferenceDAO;
 import com.apisports.knime.core.descriptor.DescriptorRegistry;
+import com.apisports.knime.port.ReferenceDAO;
 import com.apisports.knime.core.descriptor.EndpointDescriptor;
 import com.apisports.knime.core.descriptor.ParameterDescriptor;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;

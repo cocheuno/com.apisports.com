@@ -8,17 +8,14 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: org.knime.core;bundle-version="[5.5.0,6.0.0)",
  com.fasterxml.jackson.core.jackson-core;bundle-version="2.16.1",
  com.fasterxml.jackson.core.jackson-databind;bundle-version="2.16.1",
- org.yaml.snakeyaml;bundle-version="2.0.0",
- com.apisports.knime.port;bundle-version="1.0.0"
+ org.yaml.snakeyaml;bundle-version="2.0.0"
 Export-Package: com.apisports.knime.core.cache,
  com.apisports.knime.core.client,
- com.apisports.knime.core.dao,
  com.apisports.knime.core.descriptor,
  com.apisports.knime.core.exception,
  com.apisports.knime.core.license,
  com.apisports.knime.core.model,
  com.apisports.knime.core.ratelimit
-Bundle-ClassPath: .,
- lib/sqlite-jdbc-3.43.0.0.jar
+Bundle-ClassPath: .
 Automatic-Module-Name: com.apisports.knime.core
 Automatic-Module-Name: com.apisports.knime.connector
