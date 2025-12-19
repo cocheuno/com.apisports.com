@@ -30,6 +30,14 @@ public class ReferenceDAO implements AutoCloseable {
         if (parentDir != null && !parentDir.exists()) {
             parentDir.mkdirs();
         }
+
+        // Explicitly load SQLite JDBC driver (required in OSGi environments)
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            throw new SQLException("SQLite JDBC driver not found. Ensure sqlite-jdbc JAR is in bundle classpath.", e);
+        }
+
         this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
         initializeDatabase();
     }
