@@ -9,5 +9,12 @@
                 specSerializer="com.apisports.knime.port.ApiSportsConnectionPortObjectSerializer$SpecSerializer"
                 color="#FFA500"
                 hidden="false"/>
+      <portType name="Reference Data"
+                objectClass="com.apisports.knime.port.ReferenceDataPortObject"
+                objectSerializer="com.apisports.knime.port.ReferenceDataPortObjectSerializer"
+                specClass="com.apisports.knime.port.ReferenceDataPortObjectSpec"
+                specSerializer="com.apisports.knime.port.ReferenceDataPortObjectSerializer$SpecSerializer"
+                color="#00CED1"
+                hidden="false"/>
    </extension>
 </plugin>
