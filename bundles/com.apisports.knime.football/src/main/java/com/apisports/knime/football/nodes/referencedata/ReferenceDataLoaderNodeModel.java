@@ -97,6 +97,12 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                 exec.setMessage("Clearing existing data...");
                 dao.clearAll();
                 getLogger().info("Database cleared");
+            } else {
+                // Always clear leagues/seasons/teams to ensure database matches current filters
+                // (Countries remain since they're always loaded)
+                exec.setMessage("Clearing previous leagues/seasons/teams...");
+                dao.clearLeaguesAndRelatedData();
+                getLogger().info("Cleared previous leagues/seasons/teams");
             }
 
             // Get country filter

@@ -164,18 +164,13 @@ public class UniversalNodeDialog extends NodeDialogPane {
         seasonCombo.removeAllItems();
 
         // Add seasons for the selected league only
-        boolean hasSeasons = false;
         for (ReferenceData.Season season : allSeasons) {
             if (season.getLeagueId() == leagueId) {
                 seasonCombo.addItem(season.getYear());
-                hasSeasons = true;
             }
         }
 
-        // If no seasons found, add a placeholder
-        if (!hasSeasons) {
-            seasonCombo.addItem(-1);
-        }
+        // If no seasons found, leave dropdown empty (will show blank)
     }
 
     private void updateTeamCombo(int leagueId) {

@@ -119,6 +119,19 @@ public class ReferenceDAO implements AutoCloseable {
         }
     }
 
+    /**
+     * Clear leagues, seasons, and teams (but keep countries).
+     * Use this when reloading with different filters.
+     */
+    public void clearLeaguesAndRelatedData() throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("DELETE FROM team_leagues");
+            stmt.execute("DELETE FROM teams");
+            stmt.execute("DELETE FROM seasons");
+            stmt.execute("DELETE FROM leagues");
+        }
+    }
+
     // ========== Country Operations ==========
 
     public void upsertCountries(List<Country> countries) throws SQLException {
