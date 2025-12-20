@@ -204,45 +204,40 @@ public class UniversalNodeDialog extends NodeDialogPane {
         }
 
         // Load saved settings
-        try {
-            String endpoint = settings.getString(UniversalNodeModel.CFGKEY_ENDPOINT_ID, "");
-            if (!endpoint.isEmpty()) {
-                endpointCombo.setSelectedItem(endpoint);
-            }
-
-            int leagueId = settings.getInt(UniversalNodeModel.CFGKEY_SELECTED_LEAGUE, -1);
-            if (leagueId > 0) {
-                for (int i = 0; i < leagueCombo.getItemCount(); i++) {
-                    LeagueItem item = leagueCombo.getItemAt(i);
-                    if (item != null && item.id == leagueId) {
-                        leagueCombo.setSelectedIndex(i);
-                        break;
-                    }
-                }
-            }
-
-            int season = settings.getInt(UniversalNodeModel.CFGKEY_SELECTED_SEASON, -1);
-            if (season > 0) {
-                seasonCombo.setSelectedItem(season);
-            }
-
-            int teamId = settings.getInt(UniversalNodeModel.CFGKEY_SELECTED_TEAM, -1);
-            if (teamId > 0) {
-                for (int i = 0; i < teamCombo.getItemCount(); i++) {
-                    TeamItem item = teamCombo.getItemAt(i);
-                    if (item != null && item.id == teamId) {
-                        teamCombo.setSelectedIndex(i);
-                        break;
-                    }
-                }
-            }
-
-            String params = settings.getString(UniversalNodeModel.CFGKEY_PARAMETERS, "{}");
-            parametersArea.setText(params);
-
-        } catch (InvalidSettingsException e) {
-            // Use defaults
+        String endpoint = settings.getString(UniversalNodeModel.CFGKEY_ENDPOINT_ID, "");
+        if (!endpoint.isEmpty()) {
+            endpointCombo.setSelectedItem(endpoint);
         }
+
+        int leagueId = settings.getInt(UniversalNodeModel.CFGKEY_SELECTED_LEAGUE, -1);
+        if (leagueId > 0) {
+            for (int i = 0; i < leagueCombo.getItemCount(); i++) {
+                LeagueItem item = leagueCombo.getItemAt(i);
+                if (item != null && item.id == leagueId) {
+                    leagueCombo.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+
+        int season = settings.getInt(UniversalNodeModel.CFGKEY_SELECTED_SEASON, -1);
+        if (season > 0) {
+            seasonCombo.setSelectedItem(season);
+        }
+
+        int teamId = settings.getInt(UniversalNodeModel.CFGKEY_SELECTED_TEAM, -1);
+        if (teamId > 0) {
+            for (int i = 0; i < teamCombo.getItemCount(); i++) {
+                TeamItem item = teamCombo.getItemAt(i);
+                if (item != null && item.id == teamId) {
+                    teamCombo.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+
+        String params = settings.getString(UniversalNodeModel.CFGKEY_PARAMETERS, "{}");
+        parametersArea.setText(params);
     }
 
     private void loadReferenceData(String dbPath) throws NotConfigurableException {
