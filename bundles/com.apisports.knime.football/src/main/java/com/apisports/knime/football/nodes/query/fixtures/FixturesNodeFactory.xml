@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./fixtures.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Fixtures</name>
+
+    <shortDescription>
+        Query fixtures from the Football API
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Queries fixture data (matches/games) from the Football API. Supports multiple query types
+            including by league, date range, team, fixture ID, live fixtures, and head-to-head comparisons.
+            </p>
+            <p>
+            The node takes reference data as input to populate league, season, and team selections.
+            Results include fixture details, teams, scores, status, and venue information.
+            </p>
+        </intro>
+
+        <option name="Query Type">
+            Select how to query fixtures:
+            <ul>
+                <li><b>By League/Season:</b> Get all fixtures for a specific league and season</li>
+                <li><b>By Date Range:</b> Get fixtures within a date range</li>
+                <li><b>By Team:</b> Get all fixtures for a specific team in a season</li>
+                <li><b>By Fixture ID:</b> Get details for a specific fixture</li>
+                <li><b>Live Fixtures:</b> Get all currently live fixtures</li>
+                <li><b>Head to Head:</b> Compare past encounters between two teams</li>
+            </ul>
+        </option>
+
+        <option name="League">
+            Select the league to query. Populated from reference data input.
+        </option>
+
+        <option name="Season">
+            Select the season year. Populated from reference data input.
+        </option>
+
+        <option name="Team">
+            Optional team filter. Leave blank to get fixtures for all teams in the league.
+        </option>
+
+        <option name="From Date / To Date">
+            For date range queries, specify the date range in YYYY-MM-DD format.
+            To date is optional.
+        </option>
+
+        <option name="Fixture ID">
+            For fixture ID queries, specify the numeric fixture ID.
+        </option>
+
+        <option name="Status Filter">
+            Optional filter by fixture status (NS=Not Started, FT=Finished, LIVE=In Progress, etc.).
+        </option>
+
+        <option name="Include Additional Data">
+            Optionally include events, lineups, or statistics in the query.
+            Note: This may increase API response time and data volume.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Connector node
+        </inPort>
+        <inPort index="1" name="Reference Data">
+            Reference data (leagues, seasons, teams) from the Reference Data Loader node
+        </inPort>
+        <outPort index="0" name="Fixtures">
+            Table containing fixture data with columns: Fixture_ID, Date, Status, League_ID, League_Name,
+            Season, Round, Home_Team_ID, Home_Team, Away_Team_ID, Away_Team, Home_Goals, Away_Goals, Venue
+        </outPort>
+    </ports>
+</knimeNode>

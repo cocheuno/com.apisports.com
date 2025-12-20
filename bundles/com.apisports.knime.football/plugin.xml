@@ -10,6 +10,8 @@
             factory-class="com.apisports.knime.football.nodes.universal.UniversalNodeFactory"/>
       <!-- Curated Query Nodes -->
       <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.fixtures.FixturesNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.teamstats.TeamStatisticsNodeFactory"/>
       <!-- Legacy Nodes (deprecated) -->
       <!--
