@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./players.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Players</name>
+
+    <shortDescription>
+        Query player statistics from the Football API
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Queries player data and statistics from the Football API. Supports multiple query
+            types including top scorers, top assists, most carded players, player search by
+            name, and detailed stats for specific players.
+            </p>
+            <p>
+            Results include player biographical information (name, age, nationality) and
+            statistics (appearances, goals, assists, cards, rating).
+            </p>
+        </intro>
+
+        <option name="Query Type">
+            Select how to query player data:
+            <ul>
+                <li><b>Top Scorers:</b> Get leading goal scorers for league and season</li>
+                <li><b>Top Assists:</b> Get players with most assists</li>
+                <li><b>Top Yellow Cards:</b> Get most yellow carded players</li>
+                <li><b>Top Red Cards:</b> Get most red carded players</li>
+                <li><b>Search by Name:</b> Find players by name (partial match supported)</li>
+                <li><b>By Player ID:</b> Get detailed statistics for a specific player</li>
+            </ul>
+        </option>
+
+        <option name="League">
+            Select the league. Required for top scorers/assists/cards queries.
+        </option>
+
+        <option name="Season">
+            Select the season year. Required for all query types.
+        </option>
+
+        <option name="Player Name">
+            For name search queries, enter the player name (partial match supported).
+        </option>
+
+        <option name="Player ID">
+            For player ID queries, enter the numeric player ID.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Connector node
+        </inPort>
+        <inPort index="1" name="Reference Data">
+            Reference data (leagues, seasons) from the Reference Data Loader node
+        </inPort>
+        <outPort index="0" name="Players">
+            Table containing player data with columns: Player_ID, Name, Firstname, Lastname,
+            Nationality, Age, Team, Position, Appearances, Goals, Assists, Yellow_Cards,
+            Red_Cards, Rating
+        </outPort>
+    </ports>
+</knimeNode>
