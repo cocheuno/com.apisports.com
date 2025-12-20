@@ -40,9 +40,20 @@ import java.util.Set;
  */
 public class ReferenceDataLoaderNodeModel extends NodeModel {
 
-    // Rate limiting: 10 requests per minute = 6 seconds between requests
-    private static final long RATE_LIMIT_DELAY_MS = 6000;
-    private long lastApiCallTime = 0;
+    /**
+     * Helper class to hold leagues and seasons extracted from a single API response.
+     */
+    private static class LeaguesAndSeasons {
+        final List<League> leagues;
+        final List<Season> seasons;
+        final Set<String> countries;
+
+        LeaguesAndSeasons(List<League> leagues, List<Season> seasons, Set<String> countries) {
+            this.leagues = leagues;
+            this.seasons = seasons;
+            this.countries = countries;
+        }
+    }
 
     static final String CFGKEY_LOAD_TEAMS = "loadTeams";
     static final String CFGKEY_LOAD_VENUES = "loadVenues";
@@ -83,23 +94,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
               new PortType[]{ReferenceDataPortObject.TYPE});
     }
 
-    /**
-     * Enforce rate limit of 10 requests per minute (6 seconds between calls).
-     * Displays progress message while waiting.
-     */
-    private void waitForRateLimit(ExecutionContext exec, String message) throws Exception {
-        long now = System.currentTimeMillis();
-        long timeSinceLastCall = now - lastApiCallTime;
-
-        if (lastApiCallTime > 0 && timeSinceLastCall < RATE_LIMIT_DELAY_MS) {
-            long waitTime = RATE_LIMIT_DELAY_MS - timeSinceLastCall;
-            exec.setMessage(message + " (rate limit: waiting " + (waitTime / 1000) + "s...)");
-            Thread.sleep(waitTime);
-        }
-
-        lastApiCallTime = System.currentTimeMillis();
-    }
-
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         // Get API client
@@ -130,45 +124,40 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             Set<String> countryFilter = new HashSet<>(Arrays.asList(m_countryFilter.getStringArrayValue()));
             boolean hasCountryFilter = !countryFilter.isEmpty();
 
-            // Load countries
-            exec.setMessage("Loading countries...");
-            exec.setProgress(0.1);
-            List<Country> countries = loadCountries(client, mapper, exec);
-            dao.upsertCountries(countries);
-            getLogger().info("Loaded " + countries.size() + " countries");
-
-            // Load leagues (filtered by country if specified)
-            exec.setMessage("Loading leagues...");
+            // Load leagues and seasons in a single optimized call
+            // The /leagues endpoint returns seasons embedded in the response, so we extract both
+            exec.setMessage("Loading leagues and seasons...");
             exec.setProgress(0.2);
-            List<League> leaguesToStore;
-            if (hasCountryFilter) {
-                leaguesToStore = loadLeaguesFiltered(client, mapper, countryFilter, exec);
-                getLogger().info("Loaded " + leaguesToStore.size() + " leagues for countries: " +
-                                String.join(", ", countryFilter));
-            } else {
-                leaguesToStore = loadLeagues(client, mapper, exec);
-                getLogger().info("Loaded " + leaguesToStore.size() + " leagues (all countries)");
+            LeaguesAndSeasons data = loadLeaguesWithSeasons(client, mapper, countryFilter, hasCountryFilter);
+
+            getLogger().info("Loaded " + data.leagues.size() + " leagues and " +
+                           data.seasons.size() + " seasons" +
+                           (hasCountryFilter ? " for countries: " + String.join(", ", countryFilter) : " (all countries)"));
+
+            // Store countries extracted from league data
+            List<Country> countries = new ArrayList<>();
+            for (String countryName : data.countries) {
+                countries.add(new Country(countryName, null, null));
             }
+            dao.upsertCountries(countries);
+            getLogger().info("Extracted " + countries.size() + " countries from league data");
 
-
-            dao.upsertLeagues(leaguesToStore);
-
-            // Load seasons for filtered leagues
-            exec.setMessage("Loading seasons...");
-            exec.setProgress(0.4);
-            List<Season> allSeasons = loadSeasons(client, mapper, leaguesToStore, exec);
+            // Store leagues
+            dao.upsertLeagues(data.leagues);
 
             // Filter seasons by date range or selected seasons
-            List<Season> filteredSeasons = filterSeasonsByDateOrSelection(allSeasons);
+            exec.setMessage("Filtering seasons...");
+            exec.setProgress(0.4);
+            List<Season> filteredSeasons = filterSeasonsByDateOrSelection(data.seasons);
             dao.upsertSeasons(filteredSeasons);
-            getLogger().info("Loaded " + filteredSeasons.size() + " seasons (filtered from " +
-                            allSeasons.size() + " total)");
+            getLogger().info("Stored " + filteredSeasons.size() + " seasons (filtered from " +
+                            data.seasons.size() + " total)");
 
             // Load teams if enabled
             if (m_loadTeams.getBooleanValue()) {
                 exec.setMessage("Loading teams...");
                 exec.setProgress(0.6);
-                List<Team> teams = loadTeams(client, mapper, leaguesToStore, exec);
+                List<Team> teams = loadTeams(client, mapper, data.leagues);
                 dao.upsertTeams(teams);
                 getLogger().info("Loaded " + teams.size() + " teams");
             }
@@ -268,41 +257,57 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     }
 
     /**
-     * Load countries from /countries endpoint.
+     * OPTIMIZED: Load leagues and seasons from a single /leagues API call.
+     * The API returns seasons embedded in the response, so we extract both together.
+     * This eliminates redundant API calls and dramatically improves performance.
+     *
+     * For England + 2024: Previously ~22 API calls, now just 1 call for leagues/seasons!
      */
-    private List<Country> loadCountries(ApiSportsHttpClient client, ObjectMapper mapper, ExecutionContext exec) throws Exception {
-        List<Country> countries = new ArrayList<>();
+    private LeaguesAndSeasons loadLeaguesWithSeasons(ApiSportsHttpClient client, ObjectMapper mapper,
+                                                      Set<String> countryFilter, boolean hasCountryFilter) throws Exception {
+        List<League> leagues = new ArrayList<>();
+        List<Season> seasons = new ArrayList<>();
+        Set<String> countries = new HashSet<>();
+
         Map<String, String> params = new HashMap<>();
 
-        waitForRateLimit(exec, "Loading countries");
-        String response = client.get("/countries", params);
-        JsonNode root = mapper.readTree(response);
-        JsonNode responseArray = root.get("response");
-
-        if (responseArray != null && responseArray.isArray()) {
-            for (JsonNode countryNode : responseArray) {
-                String name = countryNode.has("name") ? countryNode.get("name").asText() : "";
-                String code = countryNode.has("code") ? countryNode.get("code").asText() : null;
-                String flag = countryNode.has("flag") ? countryNode.get("flag").asText() : null;
-
-                if (!name.isEmpty()) {
-                    countries.add(new Country(name, code, flag));
-                }
+        // If country filter is specified, use it to reduce data transfer
+        if (hasCountryFilter && countryFilter.size() == 1) {
+            // Single country - use filtered request
+            String country = countryFilter.iterator().next();
+            params.put("country", country);
+            getLogger().info("Making API call: GET /leagues?country=" + country);
+        } else if (hasCountryFilter && countryFilter.size() > 1) {
+            // Multiple countries - need multiple calls
+            for (String country : countryFilter) {
+                params.clear();
+                params.put("country", country);
+                getLogger().info("Making API call: GET /leagues?country=" + country);
+                LeaguesAndSeasons partial = parseLeaguesResponse(client.get("/leagues", params), mapper);
+                leagues.addAll(partial.leagues);
+                seasons.addAll(partial.seasons);
+                countries.addAll(partial.countries);
             }
+            return new LeaguesAndSeasons(leagues, seasons, countries);
+        } else {
+            // No filter - load all leagues
+            getLogger().info("Making API call: GET /leagues (all countries)");
         }
 
-        return countries;
+        // Make the API call and parse response
+        String response = client.get("/leagues", params);
+        return parseLeaguesResponse(response, mapper);
     }
 
     /**
-     * Load leagues from /leagues endpoint.
+     * Parse /leagues API response and extract leagues, seasons, and countries.
+     * Seasons are embedded in each league object, so we extract them together.
      */
-    private List<League> loadLeagues(ApiSportsHttpClient client, ObjectMapper mapper, ExecutionContext exec) throws Exception {
+    private LeaguesAndSeasons parseLeaguesResponse(String response, ObjectMapper mapper) throws Exception {
         List<League> leagues = new ArrayList<>();
-        Map<String, String> params = new HashMap<>();
+        List<Season> seasons = new ArrayList<>();
+        Set<String> countries = new HashSet<>();
 
-        waitForRateLimit(exec, "Loading leagues");
-        String response = client.get("/leagues", params);
         JsonNode root = mapper.readTree(response);
         JsonNode responseArray = root.get("response");
 
@@ -310,6 +315,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             for (JsonNode item : responseArray) {
                 JsonNode leagueNode = item.get("league");
                 JsonNode countryNode = item.get("country");
+                JsonNode seasonsArray = item.get("seasons");
 
                 if (leagueNode != null) {
                     int id = leagueNode.has("id") ? leagueNode.get("id").asInt() : 0;
@@ -320,137 +326,40 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                     String countryName = "";
                     if (countryNode != null && countryNode.has("name")) {
                         countryName = countryNode.get("name").asText();
+                        countries.add(countryName);
                     }
 
                     if (id > 0 && !name.isEmpty()) {
                         leagues.add(new League(id, name, type, countryName, logo));
-                    }
-                }
-            }
-        }
 
-        return leagues;
-    }
+                        // Extract seasons for this league (from the same API response!)
+                        if (seasonsArray != null && seasonsArray.isArray()) {
+                            for (JsonNode seasonNode : seasonsArray) {
+                                int year = seasonNode.has("year") ? seasonNode.get("year").asInt() : 0;
+                                String start = seasonNode.has("start") ? seasonNode.get("start").asText() : null;
+                                String end = seasonNode.has("end") ? seasonNode.get("end").asText() : null;
+                                boolean current = seasonNode.has("current") && seasonNode.get("current").asBoolean();
 
-    /**
-     * Load leagues from /leagues endpoint filtered by countries.
-     * Makes separate API calls for each country to reduce data transfer.
-     */
-    private List<League> loadLeaguesFiltered(ApiSportsHttpClient client, ObjectMapper mapper,
-                                             Set<String> countries, ExecutionContext exec) throws Exception {
-        List<League> leagues = new ArrayList<>();
-        int countryCount = 0;
-
-        for (String country : countries) {
-            exec.checkCanceled();
-            countryCount++;
-
-            Map<String, String> params = new HashMap<>();
-            params.put("country", country);
-
-            try {
-                waitForRateLimit(exec, "Loading leagues for " + country);
-                String response = client.get("/leagues", params);
-                JsonNode root = mapper.readTree(response);
-                JsonNode responseArray = root.get("response");
-
-                if (responseArray != null && responseArray.isArray()) {
-                    for (JsonNode item : responseArray) {
-                        JsonNode leagueNode = item.get("league");
-                        JsonNode countryNode = item.get("country");
-
-                        if (leagueNode != null) {
-                            int id = leagueNode.has("id") ? leagueNode.get("id").asInt() : 0;
-                            String name = leagueNode.has("name") ? leagueNode.get("name").asText() : "";
-                            String type = leagueNode.has("type") ? leagueNode.get("type").asText() : "";
-                            String logo = leagueNode.has("logo") ? leagueNode.get("logo").asText() : null;
-
-                            String countryName = "";
-                            if (countryNode != null && countryNode.has("name")) {
-                                countryName = countryNode.get("name").asText();
-                            }
-
-                            if (id > 0 && !name.isEmpty()) {
-                                leagues.add(new League(id, name, type, countryName, logo));
+                                if (year >= 2008) { // Filter seasons from 2008 onwards
+                                    seasons.add(new Season(id, year, start, end, current));
+                                }
                             }
                         }
                     }
                 }
-
-            } catch (Exception e) {
-                getLogger().warn("Failed to load leagues for country " + country + ": " + e.getMessage());
-            }
-
-            // Update progress
-            if (countryCount % 2 == 0) {
-                double progress = 0.2 + (0.05 * ((double) countryCount / countries.size()));
-                exec.setProgress(progress, "Loading leagues for " + country + "... (" +
-                                countryCount + "/" + countries.size() + " countries)");
             }
         }
 
-        return leagues;
-    }
-
-    /**
-     * Load seasons from /leagues endpoint for each league.
-     * Seasons are embedded in the league response.
-     */
-    private List<Season> loadSeasons(ApiSportsHttpClient client, ObjectMapper mapper,
-                                      List<League> leagues, ExecutionContext exec) throws Exception {
-        List<Season> allSeasons = new ArrayList<>();
-
-        for (int i = 0; i < leagues.size(); i++) {
-            exec.checkCanceled();
-            League league = leagues.get(i);
-
-            Map<String, String> params = new HashMap<>();
-            params.put("id", String.valueOf(league.getId()));
-
-            try {
-                waitForRateLimit(exec, "Loading seasons for " + league.getName());
-                String response = client.get("/leagues", params);
-                JsonNode root = mapper.readTree(response);
-                JsonNode responseArray = root.get("response");
-
-                if (responseArray != null && responseArray.isArray() && responseArray.size() > 0) {
-                    JsonNode leagueData = responseArray.get(0);
-                    JsonNode seasonsArray = leagueData.get("seasons");
-
-                    if (seasonsArray != null && seasonsArray.isArray()) {
-                        for (JsonNode seasonNode : seasonsArray) {
-                            int year = seasonNode.has("year") ? seasonNode.get("year").asInt() : 0;
-                            String start = seasonNode.has("start") ? seasonNode.get("start").asText() : null;
-                            String end = seasonNode.has("end") ? seasonNode.get("end").asText() : null;
-                            boolean current = seasonNode.has("current") && seasonNode.get("current").asBoolean();
-
-                            if (year >= 2008) { // Filter seasons from 2008 onwards
-                                allSeasons.add(new Season(league.getId(), year, start, end, current));
-                            }
-                        }
-                    }
-                }
-
-            } catch (Exception e) {
-                getLogger().warn("Failed to load seasons for league " + league.getName() + ": " + e.getMessage());
-            }
-
-            // Update progress
-            if (i % 10 == 0) {
-                double progress = 0.4 + (0.2 * ((double) i / leagues.size()));
-                exec.setProgress(progress, "Loading seasons... (" + (i + 1) + "/" + leagues.size() + ")");
-            }
-        }
-
-        return allSeasons;
+        return new LeaguesAndSeasons(leagues, seasons, countries);
     }
 
     /**
      * Load teams from /teams endpoint for each league.
      * Loads teams for all filtered leagues using the most recent season.
+     * Note: Unfortunately the API requires one call per league for teams.
      */
     private List<Team> loadTeams(ApiSportsHttpClient client, ObjectMapper mapper,
-                                  List<League> leagues, ExecutionContext exec) throws Exception {
+                                  List<League> leagues) throws Exception {
         List<Team> teams = new ArrayList<>();
         Map<Integer, Team> teamMap = new HashMap<>(); // Deduplicate teams by ID
 
@@ -471,7 +380,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
 
         // Load teams for ALL filtered leagues
         for (int i = 0; i < leagues.size(); i++) {
-            exec.checkCanceled();
             League league = leagues.get(i);
 
             Map<String, String> params = new HashMap<>();
@@ -479,7 +387,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             params.put("season", String.valueOf(seasonToUse));
 
             try {
-                waitForRateLimit(exec, "Loading teams for " + league.getName());
                 String response = client.get("/teams", params);
                 JsonNode root = mapper.readTree(response);
                 JsonNode responseArray = root.get("response");
@@ -518,10 +425,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                 getLogger().warn("Failed to load teams for league " + league.getName() + ": " + e.getMessage());
             }
 
-            // Update progress
-            if (i % 5 == 0) {
-                double progress = 0.6 + (0.2 * ((double) i / leagues.size()));
-                exec.setProgress(progress, "Loading teams... (" + (i + 1) + "/" + leagues.size() + " leagues)");
+            // Log progress
+            if (i % 5 == 0 || i == leagues.size() - 1) {
+                getLogger().info("Loaded teams for " + (i + 1) + "/" + leagues.size() + " leagues");
             }
         }
 
