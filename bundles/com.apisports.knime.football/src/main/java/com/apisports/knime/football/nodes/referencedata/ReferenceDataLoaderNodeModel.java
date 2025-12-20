@@ -40,6 +40,10 @@ import java.util.Set;
  */
 public class ReferenceDataLoaderNodeModel extends NodeModel {
 
+    // Rate limiting: 10 requests per minute = 6 seconds between requests
+    private static final long RATE_LIMIT_DELAY_MS = 6000;
+    private long lastApiCallTime = 0;
+
     static final String CFGKEY_LOAD_TEAMS = "loadTeams";
     static final String CFGKEY_LOAD_VENUES = "loadVenues";
     static final String CFGKEY_CACHE_TTL = "cacheTtl";
@@ -79,6 +83,23 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
               new PortType[]{ReferenceDataPortObject.TYPE});
     }
 
+    /**
+     * Enforce rate limit of 10 requests per minute (6 seconds between calls).
+     * Displays progress message while waiting.
+     */
+    private void waitForRateLimit(ExecutionContext exec, String message) throws Exception {
+        long now = System.currentTimeMillis();
+        long timeSinceLastCall = now - lastApiCallTime;
+
+        if (lastApiCallTime > 0 && timeSinceLastCall < RATE_LIMIT_DELAY_MS) {
+            long waitTime = RATE_LIMIT_DELAY_MS - timeSinceLastCall;
+            exec.setMessage(message + " (rate limit: waiting " + (waitTime / 1000) + "s...)");
+            Thread.sleep(waitTime);
+        }
+
+        lastApiCallTime = System.currentTimeMillis();
+    }
+
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         // Get API client
@@ -112,7 +133,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             // Load countries
             exec.setMessage("Loading countries...");
             exec.setProgress(0.1);
-            List<Country> countries = loadCountries(client, mapper);
+            List<Country> countries = loadCountries(client, mapper, exec);
             dao.upsertCountries(countries);
             getLogger().info("Loaded " + countries.size() + " countries");
 
@@ -125,7 +146,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                 getLogger().info("Loaded " + leaguesToStore.size() + " leagues for countries: " +
                                 String.join(", ", countryFilter));
             } else {
-                leaguesToStore = loadLeagues(client, mapper);
+                leaguesToStore = loadLeagues(client, mapper, exec);
                 getLogger().info("Loaded " + leaguesToStore.size() + " leagues (all countries)");
             }
 
@@ -249,10 +270,11 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     /**
      * Load countries from /countries endpoint.
      */
-    private List<Country> loadCountries(ApiSportsHttpClient client, ObjectMapper mapper) throws Exception {
+    private List<Country> loadCountries(ApiSportsHttpClient client, ObjectMapper mapper, ExecutionContext exec) throws Exception {
         List<Country> countries = new ArrayList<>();
         Map<String, String> params = new HashMap<>();
 
+        waitForRateLimit(exec, "Loading countries");
         String response = client.get("/countries", params);
         JsonNode root = mapper.readTree(response);
         JsonNode responseArray = root.get("response");
@@ -275,10 +297,11 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     /**
      * Load leagues from /leagues endpoint.
      */
-    private List<League> loadLeagues(ApiSportsHttpClient client, ObjectMapper mapper) throws Exception {
+    private List<League> loadLeagues(ApiSportsHttpClient client, ObjectMapper mapper, ExecutionContext exec) throws Exception {
         List<League> leagues = new ArrayList<>();
         Map<String, String> params = new HashMap<>();
 
+        waitForRateLimit(exec, "Loading leagues");
         String response = client.get("/leagues", params);
         JsonNode root = mapper.readTree(response);
         JsonNode responseArray = root.get("response");
@@ -326,6 +349,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             params.put("country", country);
 
             try {
+                waitForRateLimit(exec, "Loading leagues for " + country);
                 String response = client.get("/leagues", params);
                 JsonNode root = mapper.readTree(response);
                 JsonNode responseArray = root.get("response");
@@ -352,9 +376,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                         }
                     }
                 }
-
-                // Small delay to avoid rate limiting
-                Thread.sleep(100);
 
             } catch (Exception e) {
                 getLogger().warn("Failed to load leagues for country " + country + ": " + e.getMessage());
@@ -387,6 +408,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             params.put("id", String.valueOf(league.getId()));
 
             try {
+                waitForRateLimit(exec, "Loading seasons for " + league.getName());
                 String response = client.get("/leagues", params);
                 JsonNode root = mapper.readTree(response);
                 JsonNode responseArray = root.get("response");
@@ -408,9 +430,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                         }
                     }
                 }
-
-                // Small delay to avoid rate limiting
-                Thread.sleep(100);
 
             } catch (Exception e) {
                 getLogger().warn("Failed to load seasons for league " + league.getName() + ": " + e.getMessage());
@@ -460,6 +479,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             params.put("season", String.valueOf(seasonToUse));
 
             try {
+                waitForRateLimit(exec, "Loading teams for " + league.getName());
                 String response = client.get("/teams", params);
                 JsonNode root = mapper.readTree(response);
                 JsonNode responseArray = root.get("response");
@@ -493,9 +513,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                         }
                     }
                 }
-
-                // Small delay to avoid rate limiting
-                Thread.sleep(100);
 
             } catch (Exception e) {
                 getLogger().warn("Failed to load teams for league " + league.getName() + ": " + e.getMessage());
