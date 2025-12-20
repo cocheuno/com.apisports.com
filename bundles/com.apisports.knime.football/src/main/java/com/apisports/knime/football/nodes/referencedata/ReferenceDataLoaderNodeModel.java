@@ -110,25 +110,19 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             dao.upsertCountries(countries);
             getLogger().info("Loaded " + countries.size() + " countries");
 
-            // Load all leagues (we'll filter later)
+            // Load leagues (filtered by country if specified)
             exec.setMessage("Loading leagues...");
             exec.setProgress(0.2);
-            List<League> allLeagues = loadLeagues(client, mapper);
-
-            // Filter leagues by country if filter is set
-            List<League> leaguesToStore = new ArrayList<>();
+            List<League> leaguesToStore;
             if (hasCountryFilter) {
-                for (League league : allLeagues) {
-                    if (countryFilter.contains(league.getCountryName())) {
-                        leaguesToStore.add(league);
-                    }
-                }
-                getLogger().info("Filtered " + leaguesToStore.size() + " leagues from " +
-                                allLeagues.size() + " (countries: " + String.join(", ", countryFilter) + ")");
+                leaguesToStore = loadLeaguesFiltered(client, mapper, countryFilter, exec);
+                getLogger().info("Loaded " + leaguesToStore.size() + " leagues for countries: " +
+                                String.join(", ", countryFilter));
             } else {
-                leaguesToStore = allLeagues;
-                getLogger().info("Loaded " + allLeagues.size() + " leagues (no filter)");
+                leaguesToStore = loadLeagues(client, mapper);
+                getLogger().info("Loaded " + leaguesToStore.size() + " leagues (all countries)");
             }
+
 
             dao.upsertLeagues(leaguesToStore);
 
@@ -303,6 +297,68 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                         leagues.add(new League(id, name, type, countryName, logo));
                     }
                 }
+            }
+        }
+
+        return leagues;
+    }
+
+    /**
+     * Load leagues from /leagues endpoint filtered by countries.
+     * Makes separate API calls for each country to reduce data transfer.
+     */
+    private List<League> loadLeaguesFiltered(ApiSportsHttpClient client, ObjectMapper mapper,
+                                             Set<String> countries, ExecutionContext exec) throws Exception {
+        List<League> leagues = new ArrayList<>();
+        int countryCount = 0;
+
+        for (String country : countries) {
+            exec.checkCanceled();
+            countryCount++;
+
+            Map<String, String> params = new HashMap<>();
+            params.put("country", country);
+
+            try {
+                String response = client.get("/leagues", params);
+                JsonNode root = mapper.readTree(response);
+                JsonNode responseArray = root.get("response");
+
+                if (responseArray != null && responseArray.isArray()) {
+                    for (JsonNode item : responseArray) {
+                        JsonNode leagueNode = item.get("league");
+                        JsonNode countryNode = item.get("country");
+
+                        if (leagueNode != null) {
+                            int id = leagueNode.has("id") ? leagueNode.get("id").asInt() : 0;
+                            String name = leagueNode.has("name") ? leagueNode.get("name").asText() : "";
+                            String type = leagueNode.has("type") ? leagueNode.get("type").asText() : "";
+                            String logo = leagueNode.has("logo") ? leagueNode.get("logo").asText() : null;
+
+                            String countryName = "";
+                            if (countryNode != null && countryNode.has("name")) {
+                                countryName = countryNode.get("name").asText();
+                            }
+
+                            if (id > 0 && !name.isEmpty()) {
+                                leagues.add(new League(id, name, type, countryName, logo));
+                            }
+                        }
+                    }
+                }
+
+                // Small delay to avoid rate limiting
+                Thread.sleep(100);
+
+            } catch (Exception e) {
+                getLogger().warn("Failed to load leagues for country " + country + ": " + e.getMessage());
+            }
+
+            // Update progress
+            if (countryCount % 2 == 0) {
+                double progress = 0.2 + (0.05 * ((double) countryCount / countries.size()));
+                exec.setProgress(progress, "Loading leagues for " + country + "... (" +
+                                countryCount + "/" + countries.size() + " countries)");
             }
         }
 
