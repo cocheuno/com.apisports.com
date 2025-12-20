@@ -366,24 +366,36 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
 
     /**
      * Load teams from /teams endpoint for each league.
-     * This can be expensive, so we limit to major leagues or use a sample.
+     * Loads teams for all filtered leagues using the most recent season.
      */
     private List<Team> loadTeams(ApiSportsHttpClient client, ObjectMapper mapper,
                                   List<League> leagues, ExecutionContext exec) throws Exception {
         List<Team> teams = new ArrayList<>();
         Map<Integer, Team> teamMap = new HashMap<>(); // Deduplicate teams by ID
 
-        // For prototype, only load teams from first 10 leagues to avoid excessive API calls
-        // TODO: Add configuration for which leagues to load
-        int leagueLimit = Math.min(10, leagues.size());
+        // Determine which season to use for team queries
+        // Use the most recent year from filtered seasons, or current year
+        int seasonToUse = java.time.Year.now().getValue();
+        String[] selectedSeasons = m_selectedSeasons.getStringArrayValue();
+        if (selectedSeasons.length > 0) {
+            // Use the first selected season
+            try {
+                seasonToUse = Integer.parseInt(selectedSeasons[0]);
+            } catch (NumberFormatException e) {
+                // Use current year
+            }
+        }
 
-        for (int i = 0; i < leagueLimit; i++) {
+        getLogger().info("Loading teams for " + leagues.size() + " leagues using season " + seasonToUse);
+
+        // Load teams for ALL filtered leagues
+        for (int i = 0; i < leagues.size(); i++) {
             exec.checkCanceled();
             League league = leagues.get(i);
 
             Map<String, String> params = new HashMap<>();
             params.put("league", String.valueOf(league.getId()));
-            params.put("season", "2024"); // TODO: Make season configurable
+            params.put("season", String.valueOf(seasonToUse));
 
             try {
                 String response = client.get("/teams", params);
@@ -425,6 +437,12 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
 
             } catch (Exception e) {
                 getLogger().warn("Failed to load teams for league " + league.getName() + ": " + e.getMessage());
+            }
+
+            // Update progress
+            if (i % 5 == 0) {
+                double progress = 0.6 + (0.2 * ((double) i / leagues.size()));
+                exec.setProgress(progress, "Loading teams... (" + (i + 1) + "/" + leagues.size() + " leagues)");
             }
         }
 
