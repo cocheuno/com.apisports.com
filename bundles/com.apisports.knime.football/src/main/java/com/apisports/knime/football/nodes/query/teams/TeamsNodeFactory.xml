@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./teams.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Teams</name>
+
+    <shortDescription>
+        Query team information and statistics from the Football API
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Queries team information and optionally statistics from the Football API for a
+            specific league and season. Returns team details including name, code, country,
+            founding year, and venue information.
+            </p>
+            <p>
+            Optionally includes team statistics (requires additional API calls per team):
+            wins, draws, losses, goals for, and goals against.
+            </p>
+        </intro>
+
+        <option name="League">
+            Select the league to query teams for. Populated from reference data input.
+        </option>
+
+        <option name="Season">
+            Select the season year. Populated from reference data input.
+        </option>
+
+        <option name="Team">
+            Optional: Select a specific team. Leave blank to get all teams in the league.
+        </option>
+
+        <option name="Team Name Search">
+            Optional: Search for teams by name (partial match supported).
+            Alternative to selecting from dropdown.
+        </option>
+
+        <option name="Include Team Statistics">
+            Check to include team statistics (wins, draws, losses, goals).
+            Warning: This makes one additional API call per team and may increase execution time.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Connector node
+        </inPort>
+        <inPort index="1" name="Reference Data">
+            Reference data (leagues, seasons, teams) from the Reference Data Loader node
+        </inPort>
+        <outPort index="0" name="Teams">
+            Table containing team data with columns: Team_ID, Team_Name, Code, Country,
+            Founded, Venue_Name, Venue_City, Venue_Capacity, Wins, Draws, Losses,
+            Goals_For, Goals_Against
+        </outPort>
+    </ports>
+</knimeNode>

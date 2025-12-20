@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./standings.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Standings</name>
+
+    <shortDescription>
+        Query league standings/tables from the Football API
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Queries league standings (league table/rankings) from the Football API for a specific
+            league and season. Returns the complete table with team rankings, points, matches
+            played, wins/draws/losses, goals, and form.
+            </p>
+            <p>
+            The node takes reference data as input to populate league and season selections.
+            This is one of the simplest query nodes - it only requires league and season parameters.
+            </p>
+        </intro>
+
+        <option name="League">
+            Select the league to query standings for. Populated from reference data input.
+        </option>
+
+        <option name="Season">
+            Select the season year. Populated from reference data input.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Connector node
+        </inPort>
+        <inPort index="1" name="Reference Data">
+            Reference data (leagues, seasons) from the Reference Data Loader node
+        </inPort>
+        <outPort index="0" name="Standings">
+            Table containing league standings with columns: Rank, Team_ID, Team_Name, Points,
+            Played, Win, Draw, Lose, Goals_For, Goals_Against, Goal_Difference, Form, Description
+        </outPort>
+    </ports>
+</knimeNode>
