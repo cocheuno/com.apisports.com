@@ -11,25 +11,24 @@ import java.util.*;
 
 public class TrophiesNodeModel extends AbstractFootballQueryNodeModel {
     @Override
+    protected void validateExecutionSettings() throws InvalidSettingsException {
+        if (m_teamId.getIntValue() <= 0) {
+            throw new InvalidSettingsException("Please select a team (used as player ID for trophies)");
+        }
+    }
+
+    @Override
     protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
                                               ExecutionContext exec) throws Exception {
         Map<String, String> params = new HashMap<>();
-        if ("player".equals("team") && m_teamId.getIntValue() > 0) {
-            params.put("team", String.valueOf(m_teamId.getIntValue()));
-        } else if ("player".equals("fixture")) {
-            // Requires fixture ID - using league/season as fallback
-            params.put("league", String.valueOf(m_leagueId.getIntValue()));
-            params.put("season", String.valueOf(m_season.getIntValue()));
-        } else if ("player".equals("player") && m_teamId.getIntValue() > 0) {
-            params.put("player", String.valueOf(m_teamId.getIntValue()));
-        }
+        params.put("player", String.valueOf(m_teamId.getIntValue()));
 
         exec.setMessage("Querying trophies from API...");
         JsonNode response = callApi(client, "/trophies", params, mapper);
-        return parseSimpleResponse(response, exec);
+        return parseResponse(response, exec);
     }
 
-    private BufferedDataTable parseSimpleResponse(JsonNode response, ExecutionContext exec) {
+    private BufferedDataTable parseResponse(JsonNode response, ExecutionContext exec) {
         DataTableSpec spec = getOutputSpec();
         BufferedDataContainer container = exec.createDataContainer(spec);
         int rowNum = 0;
@@ -37,15 +36,21 @@ public class TrophiesNodeModel extends AbstractFootballQueryNodeModel {
         if (response != null && response.isArray()) {
             for (JsonNode item : response) {
                 try {
-                    // Generic parsing - columns depend on API response
-                    List<DataCell> cells = new ArrayList<>();
-                    for (int i = 0; i < spec.getNumColumns(); i++) {
-                        cells.add(new StringCell(""));  // Placeholder
-                    }
-                    container.addRowToTable(new DefaultRow(new RowKey("Row" + rowNum), cells.toArray(new DataCell[0])));
+                    String league = item.has("league") ? item.get("league").asText() : "";
+                    String country = item.has("country") ? item.get("country").asText() : "";
+                    String season = item.has("season") ? item.get("season").asText() : "";
+                    String place = item.has("place") ? item.get("place").asText() : "";
+
+                    DataCell[] cells = new DataCell[]{
+                        new StringCell(league),
+                        new StringCell(country),
+                        new StringCell(season),
+                        new StringCell(place)
+                    };
+                    container.addRowToTable(new DefaultRow(new RowKey("Row" + rowNum), cells));
                     rowNum++;
                 } catch (Exception e) {
-                    getLogger().warn("Failed to parse row: " + e.getMessage());
+                    getLogger().warn("Failed to parse trophy: " + e.getMessage());
                 }
             }
         }
@@ -55,16 +60,11 @@ public class TrophiesNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected DataTableSpec getOutputSpec() {
-        List<DataColumnSpec> colSpecs = new ArrayList<>();
-        String[] cols = {"['Player_ID:int', 'Player_Name:str', 'League:str', 'Country:str', 'Season:str', 'Place:str']"}.split(", ");
-        for (String col : cols) {
-            String[] parts = col.split(":");
-            if (parts[1].equals("int")) {
-                colSpecs.add(new DataColumnSpecCreator(parts[0], IntCell.TYPE).createSpec());
-            } else {
-                colSpecs.add(new DataColumnSpecCreator(parts[0], StringCell.TYPE).createSpec());
-            }
-        }
-        return new DataTableSpec(colSpecs.toArray(new DataColumnSpec[0]));
+        return new DataTableSpec(
+            new DataColumnSpecCreator("League", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Country", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Season", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Place", StringCell.TYPE).createSpec()
+        );
     }
 }
