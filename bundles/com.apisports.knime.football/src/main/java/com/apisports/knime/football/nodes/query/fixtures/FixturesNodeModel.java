@@ -170,6 +170,11 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                 params.put("league", String.valueOf(m_leagueId.getIntValue()));
             }
 
+            // Optional team filter
+            if (m_teamId.getIntValue() > 0) {
+                params.put("team", String.valueOf(m_teamId.getIntValue()));
+            }
+
         } else if (QUERY_BY_TEAM.equals(queryType)) {
             params.put("team", String.valueOf(m_teamId.getIntValue()));
             params.put("season", String.valueOf(m_season.getIntValue()));
