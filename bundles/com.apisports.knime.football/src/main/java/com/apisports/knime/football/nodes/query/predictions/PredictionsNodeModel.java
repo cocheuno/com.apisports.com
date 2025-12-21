@@ -14,22 +14,15 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
     protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
                                               ExecutionContext exec) throws Exception {
         Map<String, String> params = new HashMap<>();
-        if ("fixture".equals("team") && m_teamId.getIntValue() > 0) {
-            params.put("team", String.valueOf(m_teamId.getIntValue()));
-        } else if ("fixture".equals("fixture")) {
-            // Requires fixture ID - using league/season as fallback
-            params.put("league", String.valueOf(m_leagueId.getIntValue()));
-            params.put("season", String.valueOf(m_season.getIntValue()));
-        } else if ("fixture".equals("player") && m_teamId.getIntValue() > 0) {
-            params.put("player", String.valueOf(m_teamId.getIntValue()));
-        }
+        params.put("league", String.valueOf(m_leagueId.getIntValue()));
+        params.put("season", String.valueOf(m_season.getIntValue()));
 
         exec.setMessage("Querying predictions from API...");
         JsonNode response = callApi(client, "/predictions", params, mapper);
-        return parseSimpleResponse(response, exec);
+        return parseResponse(response, exec);
     }
 
-    private BufferedDataTable parseSimpleResponse(JsonNode response, ExecutionContext exec) {
+    private BufferedDataTable parseResponse(JsonNode response, ExecutionContext exec) {
         DataTableSpec spec = getOutputSpec();
         BufferedDataContainer container = exec.createDataContainer(spec);
         int rowNum = 0;
@@ -37,15 +30,40 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
         if (response != null && response.isArray()) {
             for (JsonNode item : response) {
                 try {
-                    // Generic parsing - columns depend on API response
-                    List<DataCell> cells = new ArrayList<>();
-                    for (int i = 0; i < spec.getNumColumns(); i++) {
-                        cells.add(new StringCell(""));  // Placeholder
+                    JsonNode predictions = item.get("predictions");
+                    JsonNode league = item.get("league");
+                    JsonNode teams = item.get("teams");
+
+                    int fixtureId = 0;
+                    if (item.has("fixture") && item.get("fixture").has("id")) {
+                        fixtureId = item.get("fixture").get("id").asInt();
                     }
-                    container.addRowToTable(new DefaultRow(new RowKey("Row" + rowNum), cells.toArray(new DataCell[0])));
+
+                    String leagueName = league != null && league.has("name") ? league.get("name").asText() : "";
+                    String winner = predictions != null && predictions.has("winner") && predictions.get("winner").has("name")
+                        ? predictions.get("winner").get("name").asText() : "";
+                    String winPercent = predictions != null && predictions.has("percent") && predictions.get("percent").has(winner.toLowerCase())
+                        ? predictions.get("percent").get(winner.toLowerCase()).asText() : "";
+                    String advice = predictions != null && predictions.has("advice") ? predictions.get("advice").asText() : "";
+
+                    String homeTeam = teams != null && teams.has("home") && teams.get("home").has("name")
+                        ? teams.get("home").get("name").asText() : "";
+                    String awayTeam = teams != null && teams.has("away") && teams.get("away").has("name")
+                        ? teams.get("away").get("name").asText() : "";
+
+                    DataCell[] cells = new DataCell[]{
+                        new IntCell(fixtureId),
+                        new StringCell(leagueName),
+                        new StringCell(homeTeam),
+                        new StringCell(awayTeam),
+                        new StringCell(winner),
+                        new StringCell(winPercent),
+                        new StringCell(advice)
+                    };
+                    container.addRowToTable(new DefaultRow(new RowKey("Row" + rowNum), cells));
                     rowNum++;
                 } catch (Exception e) {
-                    getLogger().warn("Failed to parse row: " + e.getMessage());
+                    getLogger().warn("Failed to parse prediction: " + e.getMessage());
                 }
             }
         }
@@ -55,16 +73,14 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected DataTableSpec getOutputSpec() {
-        List<DataColumnSpec> colSpecs = new ArrayList<>();
-        String[] cols = {"['Prediction_ID:int', 'Fixture_ID:int', 'Winner:str', 'Win_Percent:str', 'Advice:str']"}.split(", ");
-        for (String col : cols) {
-            String[] parts = col.split(":");
-            if (parts[1].equals("int")) {
-                colSpecs.add(new DataColumnSpecCreator(parts[0], IntCell.TYPE).createSpec());
-            } else {
-                colSpecs.add(new DataColumnSpecCreator(parts[0], StringCell.TYPE).createSpec());
-            }
-        }
-        return new DataTableSpec(colSpecs.toArray(new DataColumnSpec[0]));
+        return new DataTableSpec(
+            new DataColumnSpecCreator("Fixture_ID", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("League", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Home_Team", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Away_Team", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Winner", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Win_Percent", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Advice", StringCell.TYPE).createSpec()
+        );
     }
 }

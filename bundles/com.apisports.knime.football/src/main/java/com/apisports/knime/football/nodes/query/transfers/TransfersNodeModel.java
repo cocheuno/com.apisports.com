@@ -11,25 +11,24 @@ import java.util.*;
 
 public class TransfersNodeModel extends AbstractFootballQueryNodeModel {
     @Override
+    protected void validateExecutionSettings() throws InvalidSettingsException {
+        if (m_teamId.getIntValue() <= 0) {
+            throw new InvalidSettingsException("Please select a team");
+        }
+    }
+
+    @Override
     protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
                                               ExecutionContext exec) throws Exception {
         Map<String, String> params = new HashMap<>();
-        if ("player".equals("team") && m_teamId.getIntValue() > 0) {
-            params.put("team", String.valueOf(m_teamId.getIntValue()));
-        } else if ("player".equals("fixture")) {
-            // Requires fixture ID - using league/season as fallback
-            params.put("league", String.valueOf(m_leagueId.getIntValue()));
-            params.put("season", String.valueOf(m_season.getIntValue()));
-        } else if ("player".equals("player") && m_teamId.getIntValue() > 0) {
-            params.put("player", String.valueOf(m_teamId.getIntValue()));
-        }
+        params.put("team", String.valueOf(m_teamId.getIntValue()));
 
         exec.setMessage("Querying transfers from API...");
         JsonNode response = callApi(client, "/transfers", params, mapper);
-        return parseSimpleResponse(response, exec);
+        return parseResponse(response, exec);
     }
 
-    private BufferedDataTable parseSimpleResponse(JsonNode response, ExecutionContext exec) {
+    private BufferedDataTable parseResponse(JsonNode response, ExecutionContext exec) {
         DataTableSpec spec = getOutputSpec();
         BufferedDataContainer container = exec.createDataContainer(spec);
         int rowNum = 0;
@@ -37,15 +36,37 @@ public class TransfersNodeModel extends AbstractFootballQueryNodeModel {
         if (response != null && response.isArray()) {
             for (JsonNode item : response) {
                 try {
-                    // Generic parsing - columns depend on API response
-                    List<DataCell> cells = new ArrayList<>();
-                    for (int i = 0; i < spec.getNumColumns(); i++) {
-                        cells.add(new StringCell(""));  // Placeholder
+                    JsonNode player = item.get("player");
+                    JsonNode transfers = item.get("transfers");
+
+                    int playerId = player != null && player.has("id") ? player.get("id").asInt() : 0;
+                    String playerName = player != null && player.has("name") ? player.get("name").asText() : "";
+
+                    if (transfers != null && transfers.isArray()) {
+                        for (JsonNode transfer : transfers) {
+                            String date = transfer.has("date") ? transfer.get("date").asText() : "";
+                            String type = transfer.has("type") ? transfer.get("type").asText() : "";
+
+                            JsonNode teamsNode = transfer.get("teams");
+                            String teamIn = teamsNode != null && teamsNode.has("in") && teamsNode.get("in").has("name")
+                                ? teamsNode.get("in").get("name").asText() : "";
+                            String teamOut = teamsNode != null && teamsNode.has("out") && teamsNode.get("out").has("name")
+                                ? teamsNode.get("out").get("name").asText() : "";
+
+                            DataCell[] cells = new DataCell[]{
+                                new IntCell(playerId),
+                                new StringCell(playerName),
+                                new StringCell(date),
+                                new StringCell(type),
+                                new StringCell(teamOut),
+                                new StringCell(teamIn)
+                            };
+                            container.addRowToTable(new DefaultRow(new RowKey("Row" + rowNum), cells));
+                            rowNum++;
+                        }
                     }
-                    container.addRowToTable(new DefaultRow(new RowKey("Row" + rowNum), cells.toArray(new DataCell[0])));
-                    rowNum++;
                 } catch (Exception e) {
-                    getLogger().warn("Failed to parse row: " + e.getMessage());
+                    getLogger().warn("Failed to parse transfer: " + e.getMessage());
                 }
             }
         }
@@ -55,16 +76,13 @@ public class TransfersNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected DataTableSpec getOutputSpec() {
-        List<DataColumnSpec> colSpecs = new ArrayList<>();
-        String[] cols = {"['Player_ID:int', 'Player_Name:str', 'Team_In:str', 'Team_Out:str', 'Date:str', 'Type:str']"}.split(", ");
-        for (String col : cols) {
-            String[] parts = col.split(":");
-            if (parts[1].equals("int")) {
-                colSpecs.add(new DataColumnSpecCreator(parts[0], IntCell.TYPE).createSpec());
-            } else {
-                colSpecs.add(new DataColumnSpecCreator(parts[0], StringCell.TYPE).createSpec());
-            }
-        }
-        return new DataTableSpec(colSpecs.toArray(new DataColumnSpec[0]));
+        return new DataTableSpec(
+            new DataColumnSpecCreator("Player_ID", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Player_Name", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Date", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Type", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Team_Out", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Team_In", StringCell.TYPE).createSpec()
+        );
     }
 }
