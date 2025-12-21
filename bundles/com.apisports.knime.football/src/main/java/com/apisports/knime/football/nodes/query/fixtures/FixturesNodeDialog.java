@@ -134,11 +134,12 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         JTextArea helpText = new JTextArea(
             "Query Types:\n" +
             "• By League/Season: Get all fixtures for a league and season\n" +
-            "• By Date Range: Get fixtures within a date range\n" +
+            "• By Date Range: Get fixtures within a date range (requires season)\n" +
             "• By Team: Get all fixtures for a specific team in a season\n" +
             "• By Fixture ID: Get a specific fixture by its ID\n" +
             "• Live Fixtures: Get all currently live fixtures\n" +
-            "• Head to Head: Compare two teams' past encounters"
+            "• Head to Head: Compare two teams' past encounters\n\n" +
+            "Note: Dates accept YYYY-MM-DD or YYYY/MM/DD format"
         );
         helpText.setEditable(false);
         helpText.setWrapStyleWord(true);
@@ -171,7 +172,8 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
 
         // Update league/season/team controls based on query type
         leagueCombo.setEnabled(showLeague || showDate);
-        seasonCombo.setEnabled(showLeague || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
+        // Season is required for league, team, and date range queries
+        seasonCombo.setEnabled(showLeague || showDate || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
         teamCombo.setEnabled(FixturesNodeModel.QUERY_BY_TEAM.equals(queryType) || showLeague);
 
         mainPanel.revalidate();

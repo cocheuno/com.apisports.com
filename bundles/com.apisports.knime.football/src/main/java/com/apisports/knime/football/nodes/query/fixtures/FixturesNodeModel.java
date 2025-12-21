@@ -77,12 +77,46 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
             if (m_fromDate.getStringValue().isEmpty()) {
                 throw new InvalidSettingsException("Please specify a start date for date range query");
             }
+            // Date range queries require season
+            if (m_season.getIntValue() <= 0) {
+                throw new InvalidSettingsException("Please select a season for date range query");
+            }
+            // Validate date format
+            validateDateFormat(m_fromDate.getStringValue(), "From Date");
+            if (!m_toDate.getStringValue().isEmpty()) {
+                validateDateFormat(m_toDate.getStringValue(), "To Date");
+            }
         } else if (QUERY_BY_ID.equals(queryType)) {
             if (m_fixtureId.getStringValue().isEmpty()) {
                 throw new InvalidSettingsException("Please specify a fixture ID");
             }
         }
         // QUERY_LIVE and QUERY_H2H have no special validation
+    }
+
+    /**
+     * Validate and normalize date format to YYYY-MM-DD.
+     */
+    private void validateDateFormat(String date, String fieldName) throws InvalidSettingsException {
+        if (date == null || date.trim().isEmpty()) {
+            return;
+        }
+
+        // Check if format matches YYYY-MM-DD or YYYY/MM/DD
+        if (!date.matches("\\d{4}[-/]\\d{2}[-/]\\d{2}")) {
+            throw new InvalidSettingsException(
+                fieldName + " must be in format YYYY-MM-DD (e.g., 2025-10-01). Got: " + date);
+        }
+    }
+
+    /**
+     * Normalize date format from YYYY/MM/DD to YYYY-MM-DD.
+     */
+    private String normalizeDateFormat(String date) {
+        if (date == null || date.isEmpty()) {
+            return date;
+        }
+        return date.replace('/', '-');
     }
 
     @Override
@@ -122,10 +156,14 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
             }
 
         } else if (QUERY_BY_DATE.equals(queryType)) {
-            params.put("from", m_fromDate.getStringValue());
+            // Normalize date format (replace / with -)
+            params.put("from", normalizeDateFormat(m_fromDate.getStringValue()));
             if (!m_toDate.getStringValue().isEmpty()) {
-                params.put("to", m_toDate.getStringValue());
+                params.put("to", normalizeDateFormat(m_toDate.getStringValue()));
             }
+
+            // Season is required for date queries
+            params.put("season", String.valueOf(m_season.getIntValue()));
 
             // Optional league filter
             if (m_leagueId.getIntValue() > 0) {
