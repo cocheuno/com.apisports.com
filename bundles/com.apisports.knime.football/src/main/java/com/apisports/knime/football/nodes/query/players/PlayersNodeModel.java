@@ -40,6 +40,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
     static final String QUERY_TOP_ASSISTS = "Top Assists";
     static final String QUERY_TOP_YELLOW_CARDS = "Top Yellow Cards";
     static final String QUERY_TOP_RED_CARDS = "Top Red Cards";
+    static final String QUERY_BY_TEAM = "Players by Team";
     static final String QUERY_BY_NAME = "Search by Name";
     static final String QUERY_BY_ID = "By Player ID";
 
@@ -55,7 +56,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         String queryType = m_queryType.getStringValue();
 
         // Most queries require league and season
-        if (!QUERY_BY_ID.equals(queryType)) {
+        if (!QUERY_BY_ID.equals(queryType) && !QUERY_BY_TEAM.equals(queryType)) {
             super.validateExecutionSettings(); // Validates league and season
         }
 
@@ -65,6 +66,9 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         }
         if (QUERY_BY_ID.equals(queryType) && m_playerId.getStringValue().isEmpty()) {
             throw new InvalidSettingsException("Please specify a player ID");
+        }
+        if (QUERY_BY_TEAM.equals(queryType) && m_teamId.getIntValue() <= 0) {
+            throw new InvalidSettingsException("Please select a team");
         }
     }
 
@@ -123,11 +127,23 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
             if (m_leagueId.getIntValue() > 0) {
                 params.put("league", String.valueOf(m_leagueId.getIntValue()));
             }
+            // Add team filter for name searches when team is selected
+            if (m_teamId.getIntValue() > 0) {
+                params.put("team", String.valueOf(m_teamId.getIntValue()));
+            }
+            params.put("season", String.valueOf(m_season.getIntValue()));
+        } else if (QUERY_BY_TEAM.equals(queryType)) {
+            // Get all players for a specific team
+            params.put("team", String.valueOf(m_teamId.getIntValue()));
             params.put("season", String.valueOf(m_season.getIntValue()));
         } else {
             // Top scorers/assists/cards queries
             params.put("league", String.valueOf(m_leagueId.getIntValue()));
             params.put("season", String.valueOf(m_season.getIntValue()));
+            // Add team filter when team is selected
+            if (m_teamId.getIntValue() > 0) {
+                params.put("team", String.valueOf(m_teamId.getIntValue()));
+            }
         }
 
         return params;
