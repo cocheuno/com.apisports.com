@@ -72,9 +72,9 @@ public class PlayersNodeDialog extends AbstractFootballQueryNodeDialog {
         // Add help text
         JTextArea helpText = new JTextArea(
             "Query Types:\n" +
-            "• Top Scorers/Assists/Cards: Get league leaders (optionally filter by team)\n" +
+            "• Top Scorers/Assists/Cards: Get league-wide leaders (no team filter)\n" +
             "• Players by Team: Get all players for a specific team\n" +
-            "• Search by Name: Find players by name (partial match)\n" +
+            "• Search by Name: Find players by name (supports team filter)\n" +
             "• By Player ID: Get detailed stats for specific player"
         );
         helpText.setEditable(false);
@@ -96,7 +96,10 @@ public class PlayersNodeDialog extends AbstractFootballQueryNodeDialog {
         boolean showIdSearch = PlayersNodeModel.QUERY_BY_ID.equals(queryType);
         boolean showLeagueSeason = !PlayersNodeModel.QUERY_BY_ID.equals(queryType)
                                     && !PlayersNodeModel.QUERY_BY_TEAM.equals(queryType);
-        boolean enableTeamCombo = !PlayersNodeModel.QUERY_BY_ID.equals(queryType);
+
+        // Only enable team combo for queries that support team filtering
+        boolean enableTeamCombo = PlayersNodeModel.QUERY_BY_TEAM.equals(queryType)
+                                || PlayersNodeModel.QUERY_BY_NAME.equals(queryType);
 
         nameSearchPanel.setVisible(showNameSearch);
         idSearchPanel.setVisible(showIdSearch);

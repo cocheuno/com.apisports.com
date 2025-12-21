@@ -137,13 +137,9 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
             params.put("team", String.valueOf(m_teamId.getIntValue()));
             params.put("season", String.valueOf(m_season.getIntValue()));
         } else {
-            // Top scorers/assists/cards queries
+            // Top scorers/assists/cards queries - these endpoints don't support team filtering
             params.put("league", String.valueOf(m_leagueId.getIntValue()));
             params.put("season", String.valueOf(m_season.getIntValue()));
-            // Add team filter when team is selected
-            if (m_teamId.getIntValue() > 0) {
-                params.put("team", String.valueOf(m_teamId.getIntValue()));
-            }
         }
 
         return params;
