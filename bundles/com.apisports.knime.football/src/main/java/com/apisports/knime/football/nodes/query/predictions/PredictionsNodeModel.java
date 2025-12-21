@@ -7,15 +7,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.*;
 import org.knime.core.data.def.*;
 import org.knime.core.node.*;
+import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import java.util.*;
 
 public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
+
+    static final String CFGKEY_FIXTURE_ID = "fixtureId";
+
+    protected final SettingsModelString m_fixtureId =
+        new SettingsModelString(CFGKEY_FIXTURE_ID, "");
+
+    @Override
+    protected void validateExecutionSettings() throws InvalidSettingsException {
+        if (m_fixtureId.getStringValue().isEmpty()) {
+            throw new InvalidSettingsException("Please specify a fixture ID for prediction");
+        }
+    }
+
     @Override
     protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
                                               ExecutionContext exec) throws Exception {
         Map<String, String> params = new HashMap<>();
-        params.put("league", String.valueOf(m_leagueId.getIntValue()));
-        params.put("season", String.valueOf(m_season.getIntValue()));
+        params.put("fixture", m_fixtureId.getStringValue());
 
         exec.setMessage("Querying predictions from API...");
         JsonNode response = callApi(client, "/predictions", params, mapper);
@@ -49,7 +62,7 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
                     String homeTeam = teams != null && teams.has("home") && teams.get("home").has("name")
                         ? teams.get("home").get("name").asText() : "";
                     String awayTeam = teams != null && teams.has("away") && teams.get("away").has("name")
-                        ? teams.get("away").get("name").asText() : "";
+                        ? teams.get("away").get("away").get("name").asText() : "";
 
                     DataCell[] cells = new DataCell[]{
                         new IntCell(fixtureId),
@@ -82,5 +95,23 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
             new DataColumnSpecCreator("Win_Percent", StringCell.TYPE).createSpec(),
             new DataColumnSpecCreator("Advice", StringCell.TYPE).createSpec()
         );
+    }
+
+    @Override
+    protected void saveSettingsTo(final NodeSettingsWO settings) {
+        super.saveSettingsTo(settings);
+        m_fixtureId.saveSettingsTo(settings);
+    }
+
+    @Override
+    protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
+        super.validateSettings(settings);
+        m_fixtureId.validateSettings(settings);
+    }
+
+    @Override
+    protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
+        super.loadValidatedSettingsFrom(settings);
+        m_fixtureId.loadSettingsFrom(settings);
     }
 }
