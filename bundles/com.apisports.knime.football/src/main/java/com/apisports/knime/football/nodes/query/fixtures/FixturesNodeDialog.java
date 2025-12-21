@@ -25,6 +25,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
     private JCheckBox includeEventsCheck;
     private JCheckBox includeLineupsCheck;
     private JCheckBox includeStatisticsCheck;
+    private JComboBox<TeamItem> team2Combo;
 
     // Panels that show/hide based on query type
     private JPanel dateRangePanel;
@@ -79,14 +80,12 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         fixtureIdPanel.add(fixtureIdField);
         mainPanel.add(fixtureIdPanel);
 
-        // H2H panel (for head-to-head queries)
+        // H2H panel (for head-to-head queries - shows second team dropdown)
         h2hPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        h2hPanel.add(new JLabel("Team 1 ID:"));
-        JTextField team1Field = new JTextField(10);
-        h2hPanel.add(team1Field);
-        h2hPanel.add(new JLabel("  Team 2 ID:"));
-        JTextField team2Field = new JTextField(10);
-        h2hPanel.add(team2Field);
+        h2hPanel.add(new JLabel("Team 2:"));
+        team2Combo = new JComboBox<>();
+        team2Combo.setPreferredSize(new Dimension(300, 25));
+        h2hPanel.add(team2Combo);
         mainPanel.add(h2hPanel);
 
         // Status filter
@@ -153,6 +152,47 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         updateVisibilityForQueryType();
     }
 
+    @Override
+    protected void onLeagueChanged() {
+        super.onLeagueChanged();
+        // Also populate team2Combo with the same teams for H2H queries
+        populateTeam2Combo();
+    }
+
+    /**
+     * Populate team2 combo with teams from selected league.
+     */
+    private void populateTeam2Combo() {
+        LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
+        if (selectedLeague == null) {
+            return;
+        }
+
+        team2Combo.removeAllItems();
+        team2Combo.addItem(new TeamItem(-1, "-- Select Team 2 --"));
+
+        if (allTeams != null) {
+            for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
+                if (team.getLeagueIds().contains(selectedLeague.id)) {
+                    team2Combo.addItem(new TeamItem(team.getId(), team.getName()));
+                }
+            }
+        }
+    }
+
+    /**
+     * Select team2 by ID in the combo box.
+     */
+    private void selectTeam2(int team2Id) {
+        for (int i = 0; i < team2Combo.getItemCount(); i++) {
+            TeamItem item = team2Combo.getItemAt(i);
+            if (item.id == team2Id) {
+                team2Combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
     /**
      * Update panel visibility based on selected query type.
      */
@@ -171,11 +211,11 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         h2hPanel.setVisible(showH2H);
 
         // Update league/season/team controls based on query type
-        leagueCombo.setEnabled(showLeague || showDate);
+        leagueCombo.setEnabled(showLeague || showDate || showH2H);
         // Season is required for league, team, and date range queries
         seasonCombo.setEnabled(showLeague || showDate || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
-        // Enable team for league, team, and date range queries
-        teamCombo.setEnabled(showLeague || showDate || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
+        // Enable team for league, team, date range, and H2H queries
+        teamCombo.setEnabled(showLeague || showDate || showH2H || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
 
         mainPanel.revalidate();
         mainPanel.repaint();
@@ -191,6 +231,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         String toDate = settings.getString(FixturesNodeModel.CFGKEY_TO_DATE, "");
         String fixtureId = settings.getString(FixturesNodeModel.CFGKEY_FIXTURE_ID, "");
         String status = settings.getString(FixturesNodeModel.CFGKEY_STATUS, "");
+        int team2Id = settings.getInt(FixturesNodeModel.CFGKEY_TEAM2_ID, -1);
         boolean includeEvents = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_EVENTS, false);
         boolean includeLineups = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_LINEUPS, false);
         boolean includeStatistics = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_STATISTICS, false);
@@ -205,6 +246,10 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         includeLineupsCheck.setSelected(includeLineups);
         includeStatisticsCheck.setSelected(includeStatistics);
 
+        // Populate and select team2 for H2H queries
+        populateTeam2Combo();
+        selectTeam2(team2Id);
+
         updateVisibilityForQueryType();
     }
 
@@ -218,6 +263,12 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         settings.addString(FixturesNodeModel.CFGKEY_FIXTURE_ID, fixtureIdField.getText());
         settings.addString(FixturesNodeModel.CFGKEY_STATUS,
                           (String) statusCombo.getSelectedItem());
+
+        // Save team2 for H2H queries
+        TeamItem selectedTeam2 = (TeamItem) team2Combo.getSelectedItem();
+        settings.addInt(FixturesNodeModel.CFGKEY_TEAM2_ID,
+                       selectedTeam2 != null ? selectedTeam2.id : -1);
+
         settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_EVENTS, includeEventsCheck.isSelected());
         settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_LINEUPS, includeLineupsCheck.isSelected());
         settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_STATISTICS, includeStatisticsCheck.isSelected());
