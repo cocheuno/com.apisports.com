@@ -20,6 +20,7 @@ import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
+import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
 
 import java.util.HashMap;
@@ -37,6 +38,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
     static final String CFGKEY_TO_DATE = "toDate";
     static final String CFGKEY_FIXTURE_ID = "fixtureId";
     static final String CFGKEY_STATUS = "status";
+    static final String CFGKEY_TEAM2_ID = "team2Id";
     static final String CFGKEY_INCLUDE_EVENTS = "includeEvents";
     static final String CFGKEY_INCLUDE_LINEUPS = "includeLineups";
     static final String CFGKEY_INCLUDE_STATISTICS = "includeStatistics";
@@ -59,6 +61,8 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         new SettingsModelString(CFGKEY_FIXTURE_ID, "");
     protected final SettingsModelString m_status =
         new SettingsModelString(CFGKEY_STATUS, "");
+    protected final SettingsModelInteger m_team2Id =
+        new SettingsModelInteger(CFGKEY_TEAM2_ID, -1);
     protected final SettingsModelBoolean m_includeEvents =
         new SettingsModelBoolean(CFGKEY_INCLUDE_EVENTS, false);
     protected final SettingsModelBoolean m_includeLineups =
@@ -90,8 +94,15 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
             if (m_fixtureId.getStringValue().isEmpty()) {
                 throw new InvalidSettingsException("Please specify a fixture ID");
             }
+        } else if (QUERY_H2H.equals(queryType)) {
+            if (m_teamId.getIntValue() <= 0) {
+                throw new InvalidSettingsException("Please select Team 1 for Head to Head query");
+            }
+            if (m_team2Id.getIntValue() <= 0) {
+                throw new InvalidSettingsException("Please select Team 2 for Head to Head query");
+            }
         }
-        // QUERY_LIVE and QUERY_H2H have no special validation
+        // QUERY_LIVE has no special validation
     }
 
     /**
@@ -186,9 +197,9 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
             params.put("live", "all");
 
         } else if (QUERY_H2H.equals(queryType)) {
-            // H2H requires special handling - two team IDs
+            // H2H requires two team IDs in format "teamId1-teamId2"
             params.put("h2h", String.valueOf(m_teamId.getIntValue()) + "-" +
-                              m_fixtureId.getStringValue()); // Reuse fixtureId field for second team
+                              String.valueOf(m_team2Id.getIntValue()));
         }
 
         // Optional status filter
@@ -313,6 +324,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_toDate.saveSettingsTo(settings);
         m_fixtureId.saveSettingsTo(settings);
         m_status.saveSettingsTo(settings);
+        m_team2Id.saveSettingsTo(settings);
         m_includeEvents.saveSettingsTo(settings);
         m_includeLineups.saveSettingsTo(settings);
         m_includeStatistics.saveSettingsTo(settings);
@@ -326,6 +338,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_toDate.validateSettings(settings);
         m_fixtureId.validateSettings(settings);
         m_status.validateSettings(settings);
+        m_team2Id.validateSettings(settings);
         m_includeEvents.validateSettings(settings);
         m_includeLineups.validateSettings(settings);
         m_includeStatistics.validateSettings(settings);
@@ -339,6 +352,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_toDate.loadSettingsFrom(settings);
         m_fixtureId.loadSettingsFrom(settings);
         m_status.loadSettingsFrom(settings);
+        m_team2Id.loadSettingsFrom(settings);
         m_includeEvents.loadSettingsFrom(settings);
         m_includeLineups.loadSettingsFrom(settings);
         m_includeStatistics.loadSettingsFrom(settings);
