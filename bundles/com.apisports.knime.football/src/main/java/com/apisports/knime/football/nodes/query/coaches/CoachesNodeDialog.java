@@ -1,0 +1,20 @@
+package com.apisports.knime.football.nodes.query.coaches;
+
+import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeDialog;
+import org.knime.core.node.*;
+import org.knime.core.node.port.PortObjectSpec;
+
+public class CoachesNodeDialog extends AbstractFootballQueryNodeDialog {
+    public CoachesNodeDialog() {
+        super();
+    }
+
+    @Override
+    protected void loadAdditionalSettings(NodeSettingsRO settings, PortObjectSpec[] specs)
+            throws NotConfigurableException {
+    }
+
+    @Override
+    protected void saveAdditionalSettings(NodeSettingsWO settings) throws InvalidSettingsException {
+    }
+}

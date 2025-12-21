@@ -1,0 +1,42 @@
+package com.apisports.knime.football.nodes.query.venues;
+
+import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeDialog;
+import org.knime.core.node.*;
+import org.knime.core.node.port.PortObjectSpec;
+import javax.swing.*;
+import java.awt.*;
+
+public class VenuesNodeDialog extends AbstractFootballQueryNodeDialog {
+    private JTextField venueNameField;
+    private JTextField cityField;
+
+    public VenuesNodeDialog() {
+        super();
+        mainPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
+        
+        JPanel namePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        namePanel.add(new JLabel("Venue Name:"));
+        venueNameField = new JTextField(20);
+        namePanel.add(venueNameField);
+        mainPanel.add(namePanel);
+
+        JPanel cityPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        cityPanel.add(new JLabel("City:"));
+        cityField = new JTextField(20);
+        cityPanel.add(cityField);
+        mainPanel.add(cityPanel);
+    }
+
+    @Override
+    protected void loadAdditionalSettings(NodeSettingsRO settings, PortObjectSpec[] specs)
+            throws NotConfigurableException {
+        venueNameField.setText(settings.getString(VenuesNodeModel.CFGKEY_VENUE_NAME, ""));
+        cityField.setText(settings.getString(VenuesNodeModel.CFGKEY_CITY, ""));
+    }
+
+    @Override
+    protected void saveAdditionalSettings(NodeSettingsWO settings) throws InvalidSettingsException {
+        settings.addString(VenuesNodeModel.CFGKEY_VENUE_NAME, venueNameField.getText());
+        settings.addString(VenuesNodeModel.CFGKEY_CITY, cityField.getText());
+    }
+}

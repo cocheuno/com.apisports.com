@@ -20,6 +20,22 @@
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.odds.OddsNodeFactory"/>
       <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.statistics.StatisticsNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.venues.VenuesNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.injuries.InjuriesNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.coaches.CoachesNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.predictions.PredictionsNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.transfers.TransfersNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.trophies.TrophiesNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.sidelined.SidelinedNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.teamstats.TeamStatisticsNodeFactory"/>
       <!-- Legacy Nodes (deprecated) -->
       <!--
