@@ -43,11 +43,11 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
      * Helper class to display league name with country in dropdown.
      */
     protected static class LeagueItem {
-        final int id;
-        final String name;
-        final String country;
+        protected final int id;
+        protected final String name;
+        protected final String country;
 
-        LeagueItem(int id, String name, String country) {
+        protected LeagueItem(int id, String name, String country) {
             this.id = id;
             this.name = name;
             this.country = country;
@@ -63,10 +63,10 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
      * Helper class to display team name in dropdown.
      */
     protected static class TeamItem {
-        final int id;
-        final String name;
+        protected final int id;
+        protected final String name;
 
-        TeamItem(int id, String name) {
+        protected TeamItem(int id, String name) {
             this.id = id;
             this.name = name;
         }
