@@ -174,7 +174,8 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         leagueCombo.setEnabled(showLeague || showDate);
         // Season is required for league, team, and date range queries
         seasonCombo.setEnabled(showLeague || showDate || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
-        teamCombo.setEnabled(FixturesNodeModel.QUERY_BY_TEAM.equals(queryType) || showLeague);
+        // Enable team for league, team, and date range queries
+        teamCombo.setEnabled(showLeague || showDate || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
 
         mainPanel.revalidate();
         mainPanel.repaint();
