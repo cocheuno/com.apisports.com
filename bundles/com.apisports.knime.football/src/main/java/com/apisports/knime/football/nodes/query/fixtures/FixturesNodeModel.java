@@ -138,9 +138,12 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         // Build query parameters based on query type
         Map<String, String> params = buildQueryParams();
 
+        // Determine the endpoint based on query type
+        String endpoint = getEndpoint();
+
         // Make API call
         exec.setMessage("Querying fixtures from API...");
-        JsonNode response = callApi(client, "/fixtures", params, mapper);
+        JsonNode response = callApi(client, endpoint, params, mapper);
 
         // Parse response and create output table
         exec.setMessage("Parsing results...");
@@ -148,6 +151,17 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         getLogger().info("Retrieved " + result.size() + " fixtures");
         return result;
+    }
+
+    /**
+     * Get the appropriate endpoint based on query type.
+     */
+    private String getEndpoint() {
+        String queryType = m_queryType.getStringValue();
+        if (QUERY_H2H.equals(queryType)) {
+            return "/fixtures/headtohead";
+        }
+        return "/fixtures";
     }
 
     /**
