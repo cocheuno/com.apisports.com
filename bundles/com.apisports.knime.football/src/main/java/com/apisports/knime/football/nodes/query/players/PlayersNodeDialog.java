@@ -41,6 +41,7 @@ public class PlayersNodeDialog extends AbstractFootballQueryNodeDialog {
             PlayersNodeModel.QUERY_TOP_ASSISTS,
             PlayersNodeModel.QUERY_TOP_YELLOW_CARDS,
             PlayersNodeModel.QUERY_TOP_RED_CARDS,
+            PlayersNodeModel.QUERY_BY_TEAM,
             PlayersNodeModel.QUERY_BY_NAME,
             PlayersNodeModel.QUERY_BY_ID
         });
@@ -71,9 +72,8 @@ public class PlayersNodeDialog extends AbstractFootballQueryNodeDialog {
         // Add help text
         JTextArea helpText = new JTextArea(
             "Query Types:\n" +
-            "• Top Scorers: Get leading goal scorers for league/season\n" +
-            "• Top Assists: Get players with most assists\n" +
-            "• Top Yellow/Red Cards: Get most carded players\n" +
+            "• Top Scorers/Assists/Cards: Get league leaders (optionally filter by team)\n" +
+            "• Players by Team: Get all players for a specific team\n" +
             "• Search by Name: Find players by name (partial match)\n" +
             "• By Player ID: Get detailed stats for specific player"
         );
@@ -94,12 +94,18 @@ public class PlayersNodeDialog extends AbstractFootballQueryNodeDialog {
 
         boolean showNameSearch = PlayersNodeModel.QUERY_BY_NAME.equals(queryType);
         boolean showIdSearch = PlayersNodeModel.QUERY_BY_ID.equals(queryType);
-        boolean showLeagueSeason = !PlayersNodeModel.QUERY_BY_ID.equals(queryType);
+        boolean showLeagueSeason = !PlayersNodeModel.QUERY_BY_ID.equals(queryType)
+                                    && !PlayersNodeModel.QUERY_BY_TEAM.equals(queryType);
+        boolean enableTeamCombo = !PlayersNodeModel.QUERY_BY_ID.equals(queryType);
 
         nameSearchPanel.setVisible(showNameSearch);
         idSearchPanel.setVisible(showIdSearch);
         leagueCombo.setEnabled(showLeagueSeason);
         seasonCombo.setEnabled(true); // Always needed
+        teamCombo.setEnabled(enableTeamCombo);
+
+        // Hide the confusing checkbox for Players node
+        teamOptionalCheckbox.setVisible(false);
 
         mainPanel.revalidate();
         mainPanel.repaint();
