@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./statistics.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Fixture Statistics</name>
+
+    <shortDescription>
+        Query detailed match statistics for a fixture
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Queries detailed match statistics for a specific fixture from the Football API.
+            Returns statistics for both teams including shots, possession, passes, fouls,
+            corners, offsides, and more.
+            </p>
+        </intro>
+
+        <option name="Fixture ID">
+            The numeric ID of the fixture to query statistics for.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">API-Sports connection</inPort>
+        <inPort index="1" name="Reference Data">Reference data</inPort>
+        <outPort index="0" name="Statistics">
+            Statistics with columns: Team_ID, Team_Name, Statistic_Type, Value
+        </outPort>
+    </ports>
+</knimeNode>

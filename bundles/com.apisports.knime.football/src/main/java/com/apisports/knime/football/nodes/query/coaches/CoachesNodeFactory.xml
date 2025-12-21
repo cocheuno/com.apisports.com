@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./coaches.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Coaches</name>
+    <shortDescription>Query coach information</shortDescription>
+
+    <fullDescription>
+        <intro><p>Query coach information from the Football API.</p></intro>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">API-Sports connection</inPort>
+        <inPort index="1" name="Reference Data">Reference data</inPort>
+        <outPort index="0" name="Coaches">Coaches data table</outPort>
+    </ports>
+</knimeNode>
