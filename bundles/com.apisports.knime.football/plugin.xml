@@ -5,9 +5,6 @@
       <!-- Reference Data -->
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.referencedata.ReferenceDataLoaderNodeFactory"/>
-      <!-- Universal Node (Prototype) -->
-      <node category-path="/carovex/apisports/football"
-            factory-class="com.apisports.knime.football.nodes.universal.UniversalNodeFactory"/>
       <!-- Curated Query Nodes -->
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.fixtures.FixturesNodeFactory"/>
@@ -19,8 +16,6 @@
             factory-class="com.apisports.knime.football.nodes.query.teams.TeamsNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.odds.OddsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
-            factory-class="com.apisports.knime.football.nodes.query.statistics.StatisticsNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.venues.VenuesNodeFactory"/>
       <node category-path="/carovex/apisports/football"
@@ -35,8 +30,6 @@
             factory-class="com.apisports.knime.football.nodes.query.trophies.TrophiesNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.sidelined.SidelinedNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
-            factory-class="com.apisports.knime.football.nodes.teamstats.TeamStatisticsNodeFactory"/>
       <!-- Legacy Nodes (deprecated) -->
       <!--
       <node category-path="/carovex/apisports/football"
