@@ -137,7 +137,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
             "• By Team: Get all fixtures for a specific team in a season\n" +
             "• By Fixture ID: Get a specific fixture by its ID\n" +
             "• Live Fixtures: Get all currently live fixtures\n" +
-            "• Head to Head: Compare two teams' past encounters\n\n" +
+            "• Head to Head: Compare two teams in a specific season\n\n" +
             "Note: Dates accept YYYY-MM-DD or YYYY/MM/DD format"
         );
         helpText.setEditable(false);
@@ -212,8 +212,8 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
 
         // Update league/season/team controls based on query type
         leagueCombo.setEnabled(showLeague || showDate || showH2H);
-        // Season is required for league, team, and date range queries
-        seasonCombo.setEnabled(showLeague || showDate || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
+        // Season is required for league, team, date range, and H2H queries
+        seasonCombo.setEnabled(showLeague || showDate || showH2H || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
         // Enable team for league, team, date range, and H2H queries
         teamCombo.setEnabled(showLeague || showDate || showH2H || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
 
