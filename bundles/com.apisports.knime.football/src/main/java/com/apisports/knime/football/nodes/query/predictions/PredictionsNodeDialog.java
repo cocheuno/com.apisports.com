@@ -1,68 +1,64 @@
 package com.apisports.knime.football.nodes.query.predictions;
 
-import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeDialog;
 import org.knime.core.node.*;
 import org.knime.core.node.port.PortObjectSpec;
 
 import javax.swing.*;
 import java.awt.*;
 
-public class PredictionsNodeDialog extends AbstractFootballQueryNodeDialog {
-
-    private JComboBox<String> fixtureCombo;
+/**
+ * Dialog for Predictions node.
+ *
+ * This node has no configuration - it processes all fixtures from the input table.
+ * The dialog just shows instructions for the user.
+ */
+public class PredictionsNodeDialog extends NodeDialogPane {
 
     public PredictionsNodeDialog() {
-        super();
-        addPredictionsSpecificComponents();
-    }
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-    private void addPredictionsSpecificComponents() {
-        // Add separator
-        mainPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
-        mainPanel.add(Box.createVerticalStrut(10));
+        // Title
+        JLabel titleLabel = new JLabel("Predictions Node");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainPanel.add(titleLabel);
+        mainPanel.add(Box.createVerticalStrut(15));
 
-        // Fixture selection dropdown (editable for manual input)
-        JPanel fixturePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        fixturePanel.add(new JLabel("Fixture ID:"));
-        fixtureCombo = new JComboBox<>();
-        fixtureCombo.setEditable(true); // Allow users to type fixture ID directly
-        fixtureCombo.setPreferredSize(new Dimension(400, 25));
-        fixturePanel.add(fixtureCombo);
-        mainPanel.add(fixturePanel);
-
-        // Add help text
-        JTextArea helpText = new JTextArea(
+        // Instructions
+        JTextArea instructions = new JTextArea(
+            "This node queries match predictions for all fixtures from the connected Fixtures node.\n\n" +
             "Workflow:\n" +
-            "1. Configure and execute a Fixtures node for your desired League/Season/Team\n" +
-            "2. Look at the Fixture_ID column in the Fixtures output to find fixtures\n" +
-            "3. Enter the Fixture ID above\n" +
-            "4. Execute this node to get predictions for that fixture\n\n" +
-            "Note: Only upcoming or recent fixtures will have predictions available."
+            "1. Configure and execute a Fixtures node to get fixtures for your League/Season/Team\n" +
+            "2. Connect the Fixtures node output to this node's second input port (triangle port)\n" +
+            "3. Execute this node to get predictions for all fixtures in the input table\n\n" +
+            "The node will automatically:\n" +
+            "• Extract all Fixture IDs from the input table\n" +
+            "• Query predictions for each fixture\n" +
+            "• Combine results into a single output table\n\n" +
+            "Note: Only upcoming or recent fixtures will have predictions available.\n" +
+            "Fixtures without predictions will be logged as warnings but won't fail execution."
         );
-        helpText.setEditable(false);
-        helpText.setWrapStyleWord(true);
-        helpText.setLineWrap(true);
-        helpText.setBackground(mainPanel.getBackground());
-        helpText.setFont(new Font("SansSerif", Font.ITALIC, 10));
-        mainPanel.add(Box.createVerticalStrut(10));
-        mainPanel.add(helpText);
+        instructions.setEditable(false);
+        instructions.setWrapStyleWord(true);
+        instructions.setLineWrap(true);
+        instructions.setBackground(mainPanel.getBackground());
+        instructions.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        instructions.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainPanel.add(instructions);
+
+        addTab("Configuration", new JScrollPane(mainPanel));
     }
 
     @Override
-    protected void loadAdditionalSettings(NodeSettingsRO settings, PortObjectSpec[] specs)
+    protected void loadSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
             throws NotConfigurableException {
-        // Restore saved fixture ID in the editable combo
-        String savedFixtureId = settings.getString(PredictionsNodeModel.CFGKEY_FIXTURE_ID, "");
-        if (!savedFixtureId.isEmpty()) {
-            fixtureCombo.getEditor().setItem(savedFixtureId);
-        }
+        // No settings to load
     }
 
     @Override
-    protected void saveAdditionalSettings(NodeSettingsWO settings) throws InvalidSettingsException {
-        // Get fixture ID from the editable combo box
-        Object selected = fixtureCombo.getEditor().getItem();
-        String fixtureId = selected != null ? selected.toString().trim() : "";
-        settings.addString(PredictionsNodeModel.CFGKEY_FIXTURE_ID, fixtureId);
+    protected void saveSettingsTo(NodeSettingsWO settings) throws InvalidSettingsException {
+        // No settings to save
     }
 }

@@ -1,44 +1,162 @@
 package com.apisports.knime.football.nodes.query.predictions;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
-import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeModel;
+import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDataPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.*;
 import org.knime.core.data.def.*;
 import org.knime.core.node.*;
-import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortObjectSpec;
+import org.knime.core.node.port.PortType;
 import java.util.*;
 
-public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
+/**
+ * Node model for Predictions queries.
+ *
+ * This node extends NodeModel directly (not AbstractFootballQueryNodeModel) because
+ * it requires 3 input ports instead of the standard 2.
+ *
+ * Input Ports:
+ *   0: ApiSportsConnectionPortObject (API connection)
+ *   1: ReferenceDataPortObject (reference data)
+ *   2: BufferedDataTable (fixtures from Fixtures node)
+ *
+ * Output Ports:
+ *   0: BufferedDataTable (prediction results)
+ */
+public class PredictionsNodeModel extends NodeModel {
 
-    static final String CFGKEY_FIXTURE_ID = "fixtureId";
-
-    protected final SettingsModelString m_fixtureId =
-        new SettingsModelString(CFGKEY_FIXTURE_ID, "");
+    public PredictionsNodeModel() {
+        super(
+            new PortType[]{
+                ApiSportsConnectionPortObject.TYPE,
+                ReferenceDataPortObject.TYPE,
+                BufferedDataTable.TYPE  // Fixtures input
+            },
+            new PortType[]{
+                BufferedDataTable.TYPE  // Predictions output
+            }
+        );
+    }
 
     @Override
-    protected void validateExecutionSettings() throws InvalidSettingsException {
-        if (m_fixtureId.getStringValue().isEmpty()) {
-            throw new InvalidSettingsException("Please specify a fixture ID for prediction");
+    protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        // Get API client from connection port
+        ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
+        ApiSportsHttpClient client = connectionPort.getClient();
+
+        // Get fixtures table from input port
+        BufferedDataTable fixturesTable = (BufferedDataTable) inObjects[2];
+
+        // Find Fixture_ID column
+        DataTableSpec fixturesSpec = fixturesTable.getDataTableSpec();
+        int fixtureIdIdx = fixturesSpec.findColumnIndex("Fixture_ID");
+
+        if (fixtureIdIdx < 0) {
+            throw new InvalidSettingsException(
+                "Input table must contain a 'Fixture_ID' column. Please connect a Fixtures node output.");
         }
+
+        // Collect unique fixture IDs from input table
+        Set<Integer> fixtureIds = new LinkedHashSet<>();
+        RowIterator rowIterator = fixturesTable.iterator();
+        while (rowIterator.hasNext()) {
+            DataRow row = rowIterator.next();
+            DataCell cell = row.getCell(fixtureIdIdx);
+            if (!cell.isMissing() && cell instanceof IntCell) {
+                fixtureIds.add(((IntCell) cell).getIntValue());
+            }
+        }
+
+        if (fixtureIds.isEmpty()) {
+            throw new InvalidSettingsException(
+                "No fixture IDs found in input table. Please ensure the Fixtures node executed successfully.");
+        }
+
+        getLogger().info("Processing predictions for " + fixtureIds.size() + " fixtures");
+
+        // Query predictions for each fixture and aggregate results
+        ObjectMapper mapper = new ObjectMapper();
+        DataTableSpec outputSpec = getOutputSpec();
+        BufferedDataContainer container = exec.createDataContainer(outputSpec);
+        int rowNum = 0;
+        int fixtureCount = 0;
+
+        for (Integer fixtureId : fixtureIds) {
+            exec.checkCanceled();
+            exec.setProgress((double) fixtureCount / fixtureIds.size(),
+                "Querying predictions for fixture " + fixtureId);
+
+            try {
+                Map<String, String> params = new HashMap<>();
+                params.put("fixture", String.valueOf(fixtureId));
+
+                JsonNode response = callApi(client, "/predictions", params, mapper);
+                rowNum = parseResponse(response, container, rowNum, exec);
+            } catch (Exception e) {
+                getLogger().warn("Failed to get predictions for fixture " + fixtureId + ": " + e.getMessage());
+            }
+
+            fixtureCount++;
+        }
+
+        container.close();
+        return new PortObject[]{container.getTable()};
     }
 
     @Override
-    protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
-                                              ExecutionContext exec) throws Exception {
-        Map<String, String> params = new HashMap<>();
-        params.put("fixture", m_fixtureId.getStringValue());
+    protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+        // Check required ports
+        if (inSpecs[0] == null) {
+            throw new InvalidSettingsException("API connection required");
+        }
+        if (inSpecs[1] == null) {
+            throw new InvalidSettingsException("Reference data required");
+        }
+        if (inSpecs[2] == null) {
+            throw new InvalidSettingsException(
+                "Fixtures table required. Please connect a Fixtures node output to the second input port.");
+        }
 
-        exec.setMessage("Querying predictions from API...");
-        JsonNode response = callApi(client, "/predictions", params, mapper);
-        return parseResponse(response, exec);
+        // Verify fixtures table has Fixture_ID column
+        if (inSpecs[2] instanceof DataTableSpec) {
+            DataTableSpec fixturesSpec = (DataTableSpec) inSpecs[2];
+            if (fixturesSpec.findColumnIndex("Fixture_ID") < 0) {
+                throw new InvalidSettingsException(
+                    "Input table must contain a 'Fixture_ID' column. Please connect a Fixtures node output.");
+            }
+        }
+
+        return new PortObjectSpec[]{getOutputSpec()};
     }
 
-    private BufferedDataTable parseResponse(JsonNode response, ExecutionContext exec) {
-        DataTableSpec spec = getOutputSpec();
-        BufferedDataContainer container = exec.createDataContainer(spec);
-        int rowNum = 0;
+    /**
+     * Make API call to Football API.
+     */
+    private JsonNode callApi(ApiSportsHttpClient client, String endpoint,
+                            Map<String, String> params, ObjectMapper mapper) throws Exception {
+        String jsonResponse = client.get(endpoint, params);
+        JsonNode root = mapper.readTree(jsonResponse);
+
+        // Check for errors
+        if (root.has("errors") && !root.get("errors").isEmpty()) {
+            throw new Exception("API returned errors: " + root.get("errors").toString());
+        }
+
+        // Return response array
+        return root.has("response") ? root.get("response") : null;
+    }
+
+    /**
+     * Parse prediction response and add rows to container.
+     * Returns the updated row number.
+     */
+    private int parseResponse(JsonNode response, BufferedDataContainer container, int startRowNum,
+                             ExecutionContext exec) {
+        int rowNum = startRowNum;
 
         if (response != null && response.isArray()) {
             for (JsonNode item : response) {
@@ -62,7 +180,7 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
                     String homeTeam = teams != null && teams.has("home") && teams.get("home").has("name")
                         ? teams.get("home").get("name").asText() : "";
                     String awayTeam = teams != null && teams.has("away") && teams.get("away").has("name")
-                        ? teams.get("away").get("away").get("name").asText() : "";
+                        ? teams.get("away").get("name").asText() : "";
 
                     DataCell[] cells = new DataCell[]{
                         new IntCell(fixtureId),
@@ -80,12 +198,11 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
                 }
             }
         }
-        container.close();
-        return container.getTable();
+
+        return rowNum;
     }
 
-    @Override
-    protected DataTableSpec getOutputSpec() {
+    private DataTableSpec getOutputSpec() {
         return new DataTableSpec(
             new DataColumnSpecCreator("Fixture_ID", IntCell.TYPE).createSpec(),
             new DataColumnSpecCreator("League", StringCell.TYPE).createSpec(),
@@ -99,19 +216,31 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
-        super.saveSettingsTo(settings);
-        m_fixtureId.saveSettingsTo(settings);
+        // No settings to save - node configuration comes from input ports
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        super.validateSettings(settings);
-        m_fixtureId.validateSettings(settings);
+        // No settings to validate
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
-        super.loadValidatedSettingsFrom(settings);
-        m_fixtureId.loadSettingsFrom(settings);
+        // No settings to load
+    }
+
+    @Override
+    protected void reset() {
+        // Nothing to reset
+    }
+
+    @Override
+    protected void loadInternals(NodeInternalsDir nodeInternalsDir, ExecutionMonitor executionMonitor) {
+        // No internals to load
+    }
+
+    @Override
+    protected void saveInternals(NodeInternalsDir nodeInternalsDir, ExecutionMonitor executionMonitor) {
+        // No internals to save
     }
 }
