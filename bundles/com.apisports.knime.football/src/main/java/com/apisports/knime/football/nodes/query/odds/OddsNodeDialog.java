@@ -1,135 +1,64 @@
 package com.apisports.knime.football.nodes.query.odds;
 
-import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeDialog;
-import org.knime.core.node.InvalidSettingsException;
-import org.knime.core.node.NodeSettingsRO;
-import org.knime.core.node.NodeSettingsWO;
-import org.knime.core.node.NotConfigurableException;
+import org.knime.core.node.*;
 import org.knime.core.node.port.PortObjectSpec;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 /**
- * Dialog for Odds query node.
+ * Dialog for Odds node.
+ *
+ * This node has no configuration - it processes all fixtures from the input table.
+ * The dialog just shows instructions for the user.
  */
-public class OddsNodeDialog extends AbstractFootballQueryNodeDialog {
-
-    private JComboBox<String> queryTypeCombo;
-    private JTextField fixtureIdField;
-    private JTextField bookmakerField;
-    private JTextField betTypeField;
-    private JPanel fixtureIdPanel;
+public class OddsNodeDialog extends NodeDialogPane {
 
     public OddsNodeDialog() {
-        super();
-        addOddsSpecificComponents();
-    }
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-    private void addOddsSpecificComponents() {
-        // Add separator
-        mainPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
-        mainPanel.add(Box.createVerticalStrut(10));
+        // Title
+        JLabel titleLabel = new JLabel("Odds Node");
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainPanel.add(titleLabel);
+        mainPanel.add(Box.createVerticalStrut(15));
 
-        // Query type selection
-        JPanel queryTypePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        queryTypePanel.add(new JLabel("Query Type:"));
-        queryTypeCombo = new JComboBox<>(new String[]{
-            OddsNodeModel.QUERY_BY_FIXTURE,
-            OddsNodeModel.QUERY_BY_LEAGUE,
-            OddsNodeModel.QUERY_LIVE
-        });
-        queryTypeCombo.setPreferredSize(new Dimension(200, 25));
-        queryTypeCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                updateVisibilityForQueryType();
-            }
-        });
-        queryTypePanel.add(queryTypeCombo);
-        mainPanel.add(queryTypePanel);
-
-        // Fixture ID panel
-        fixtureIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        fixtureIdPanel.add(new JLabel("Fixture ID:"));
-        fixtureIdField = new JTextField(15);
-        fixtureIdPanel.add(fixtureIdField);
-        mainPanel.add(fixtureIdPanel);
-
-        // Optional filters
-        JPanel bookmakerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        bookmakerPanel.add(new JLabel("Bookmaker (optional):"));
-        bookmakerField = new JTextField(20);
-        bookmakerPanel.add(bookmakerField);
-        mainPanel.add(bookmakerPanel);
-
-        JPanel betTypePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        betTypePanel.add(new JLabel("Bet Type (optional):"));
-        betTypeField = new JTextField(20);
-        betTypePanel.add(betTypeField);
-        mainPanel.add(betTypePanel);
-
-        // Add help text
-        JTextArea helpText = new JTextArea(
-            "Query Types:\n" +
-            "• By Fixture ID: Get odds for a specific fixture\n" +
-            "• By League/Season: Get odds for all fixtures in league/season\n" +
-            "• Live Odds: Get odds for currently live fixtures\n\n" +
-            "Common Bookmakers: Bet365, Betway, William Hill, etc.\n" +
-            "Common Bet Types: Match Winner, Goals Over/Under, Both Teams Score, etc."
+        // Instructions
+        JTextArea instructions = new JTextArea(
+            "This node queries betting odds for all fixtures from the connected Fixtures node.\n\n" +
+            "Workflow:\n" +
+            "1. Configure and execute a Fixtures node to get fixtures for your League/Season/Team\n" +
+            "2. Connect the Fixtures node output to this node's second input port (triangle port)\n" +
+            "3. Execute this node to get odds for all fixtures in the input table\n\n" +
+            "The node will automatically:\n" +
+            "• Extract all Fixture IDs from the input table\n" +
+            "• Query odds for each fixture\n" +
+            "• Combine results into a single output table\n\n" +
+            "Output includes odds from all bookmakers and bet types.\n" +
+            "Fixtures without available odds will be logged as warnings but won't fail execution."
         );
-        helpText.setEditable(false);
-        helpText.setWrapStyleWord(true);
-        helpText.setLineWrap(true);
-        helpText.setBackground(mainPanel.getBackground());
-        helpText.setFont(new Font("SansSerif", Font.ITALIC, 10));
-        mainPanel.add(Box.createVerticalStrut(10));
-        mainPanel.add(helpText);
+        instructions.setEditable(false);
+        instructions.setWrapStyleWord(true);
+        instructions.setLineWrap(true);
+        instructions.setBackground(mainPanel.getBackground());
+        instructions.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        instructions.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainPanel.add(instructions);
 
-        // Initial visibility
-        updateVisibilityForQueryType();
-    }
-
-    private void updateVisibilityForQueryType() {
-        String queryType = (String) queryTypeCombo.getSelectedItem();
-
-        boolean showFixtureId = OddsNodeModel.QUERY_BY_FIXTURE.equals(queryType);
-        boolean showLeague = OddsNodeModel.QUERY_BY_LEAGUE.equals(queryType);
-        boolean showLive = OddsNodeModel.QUERY_LIVE.equals(queryType);
-
-        fixtureIdPanel.setVisible(showFixtureId);
-        leagueCombo.setEnabled(showLeague);
-        seasonCombo.setEnabled(showLeague);
-
-        mainPanel.revalidate();
-        mainPanel.repaint();
+        addTab("Configuration", new JScrollPane(mainPanel));
     }
 
     @Override
-    protected void loadAdditionalSettings(NodeSettingsRO settings, PortObjectSpec[] specs)
+    protected void loadSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
             throws NotConfigurableException {
-        String queryType = settings.getString(OddsNodeModel.CFGKEY_QUERY_TYPE,
-                                              OddsNodeModel.QUERY_BY_FIXTURE);
-        String fixtureId = settings.getString(OddsNodeModel.CFGKEY_FIXTURE_ID, "");
-        String bookmaker = settings.getString(OddsNodeModel.CFGKEY_BOOKMAKER, "");
-        String betType = settings.getString(OddsNodeModel.CFGKEY_BET_TYPE, "");
-
-        queryTypeCombo.setSelectedItem(queryType);
-        fixtureIdField.setText(fixtureId);
-        bookmakerField.setText(bookmaker);
-        betTypeField.setText(betType);
-
-        updateVisibilityForQueryType();
+        // No settings to load
     }
 
     @Override
-    protected void saveAdditionalSettings(NodeSettingsWO settings) throws InvalidSettingsException {
-        settings.addString(OddsNodeModel.CFGKEY_QUERY_TYPE,
-                          (String) queryTypeCombo.getSelectedItem());
-        settings.addString(OddsNodeModel.CFGKEY_FIXTURE_ID, fixtureIdField.getText());
-        settings.addString(OddsNodeModel.CFGKEY_BOOKMAKER, bookmakerField.getText());
-        settings.addString(OddsNodeModel.CFGKEY_BET_TYPE, betTypeField.getText());
+    protected void saveSettingsTo(NodeSettingsWO settings) throws InvalidSettingsException {
+        // No settings to save
     }
 }

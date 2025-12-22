@@ -1,129 +1,166 @@
 package com.apisports.knime.football.nodes.query.odds;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
-import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeModel;
+import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDataPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.knime.core.data.DataCell;
-import org.knime.core.data.DataColumnSpec;
-import org.knime.core.data.DataColumnSpecCreator;
-import org.knime.core.data.DataRow;
-import org.knime.core.data.DataTableSpec;
-import org.knime.core.data.RowKey;
-import org.knime.core.data.def.DefaultRow;
-import org.knime.core.data.def.IntCell;
-import org.knime.core.data.def.StringCell;
-import org.knime.core.node.BufferedDataContainer;
-import org.knime.core.node.BufferedDataTable;
-import org.knime.core.node.ExecutionContext;
-import org.knime.core.node.InvalidSettingsException;
-import org.knime.core.node.NodeSettingsRO;
-import org.knime.core.node.NodeSettingsWO;
-import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.data.*;
+import org.knime.core.data.def.*;
+import org.knime.core.node.*;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortObjectSpec;
+import org.knime.core.node.port.PortType;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
+import java.util.*;
 
 /**
- * NodeModel for Odds query node.
- * Queries betting odds from the Football API.
+ * Node model for Odds queries.
+ *
+ * This node extends NodeModel directly (not AbstractFootballQueryNodeModel) because
+ * it requires 3 input ports instead of the standard 2.
+ *
+ * Input Ports:
+ *   0: ApiSportsConnectionPortObject (API connection)
+ *   1: ReferenceDataPortObject (reference data)
+ *   2: BufferedDataTable (fixtures from Fixtures node)
+ *
+ * Output Ports:
+ *   0: BufferedDataTable (odds results)
  */
-public class OddsNodeModel extends AbstractFootballQueryNodeModel {
+public class OddsNodeModel extends NodeModel {
 
-    static final String CFGKEY_QUERY_TYPE = "queryType";
-    static final String CFGKEY_FIXTURE_ID = "fixtureId";
-    static final String CFGKEY_BOOKMAKER = "bookmaker";
-    static final String CFGKEY_BET_TYPE = "betType";
-
-    // Query types
-    static final String QUERY_BY_FIXTURE = "By Fixture ID";
-    static final String QUERY_BY_LEAGUE = "By League/Season";
-    static final String QUERY_LIVE = "Live Odds";
-
-    protected final SettingsModelString m_queryType =
-        new SettingsModelString(CFGKEY_QUERY_TYPE, QUERY_BY_FIXTURE);
-    protected final SettingsModelString m_fixtureId =
-        new SettingsModelString(CFGKEY_FIXTURE_ID, "");
-    protected final SettingsModelString m_bookmaker =
-        new SettingsModelString(CFGKEY_BOOKMAKER, "");
-    protected final SettingsModelString m_betType =
-        new SettingsModelString(CFGKEY_BET_TYPE, "");
-
-    @Override
-    protected void validateExecutionSettings() throws InvalidSettingsException {
-        String queryType = m_queryType.getStringValue();
-
-        if (QUERY_BY_FIXTURE.equals(queryType)) {
-            if (m_fixtureId.getStringValue().isEmpty()) {
-                throw new InvalidSettingsException("Please specify a fixture ID");
+    public OddsNodeModel() {
+        super(
+            new PortType[]{
+                ApiSportsConnectionPortObject.TYPE,
+                ReferenceDataPortObject.TYPE,
+                BufferedDataTable.TYPE  // Fixtures input
+            },
+            new PortType[]{
+                BufferedDataTable.TYPE  // Odds output
             }
-        } else if (QUERY_BY_LEAGUE.equals(queryType)) {
-            super.validateExecutionSettings(); // Validates league and season
-        }
-        // QUERY_LIVE has no special validation
+        );
     }
 
     @Override
-    protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
-                                              ExecutionContext exec) throws Exception {
-        exec.setMessage("Building query parameters...");
+    protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        // Get API client from connection port
+        ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
+        ApiSportsHttpClient client = connectionPort.getClient();
 
-        // Build query parameters
-        Map<String, String> params = buildQueryParams();
+        // Get fixtures table from input port
+        BufferedDataTable fixturesTable = (BufferedDataTable) inObjects[2];
 
-        // Make API call
-        String endpoint = "/odds";
-        if (QUERY_LIVE.equals(m_queryType.getStringValue())) {
-            endpoint = "/odds/live";
+        // Find Fixture_ID column
+        DataTableSpec fixturesSpec = fixturesTable.getDataTableSpec();
+        int fixtureIdIdx = fixturesSpec.findColumnIndex("Fixture_ID");
+
+        if (fixtureIdIdx < 0) {
+            throw new InvalidSettingsException(
+                "Input table must contain a 'Fixture_ID' column. Please connect a Fixtures node output.");
         }
 
-        exec.setMessage("Querying odds from API...");
-        JsonNode response = callApi(client, endpoint, params, mapper);
+        // Collect unique fixture IDs from input table
+        Set<Integer> fixtureIds = new LinkedHashSet<>();
+        RowIterator rowIterator = fixturesTable.iterator();
+        while (rowIterator.hasNext()) {
+            DataRow row = rowIterator.next();
+            DataCell cell = row.getCell(fixtureIdIdx);
+            if (!cell.isMissing() && cell instanceof IntCell) {
+                fixtureIds.add(((IntCell) cell).getIntValue());
+            }
+        }
 
-        // Parse response and create output table
-        exec.setMessage("Parsing results...");
-        BufferedDataTable result = parseOddsResponse(response, exec);
+        if (fixtureIds.isEmpty()) {
+            throw new InvalidSettingsException(
+                "No fixture IDs found in input table. Please ensure the Fixtures node executed successfully.");
+        }
 
-        getLogger().info("Retrieved " + result.size() + " odds records");
-        return result;
+        getLogger().info("Processing odds for " + fixtureIds.size() + " fixtures");
+
+        // Query odds for each fixture and aggregate results
+        ObjectMapper mapper = new ObjectMapper();
+        DataTableSpec outputSpec = getOutputSpec();
+        BufferedDataContainer container = exec.createDataContainer(outputSpec);
+        int rowNum = 0;
+        int fixtureCount = 0;
+
+        for (Integer fixtureId : fixtureIds) {
+            exec.checkCanceled();
+            exec.setProgress((double) fixtureCount / fixtureIds.size(),
+                "Querying odds for fixture " + fixtureId);
+
+            try {
+                Map<String, String> params = new HashMap<>();
+                params.put("fixture", String.valueOf(fixtureId));
+
+                JsonNode response = callApi(client, "/odds", params, mapper);
+                rowNum = parseOddsResponse(response, container, rowNum, exec);
+            } catch (Exception e) {
+                getLogger().warn("Failed to get odds for fixture " + fixtureId + ": " + e.getMessage());
+            }
+
+            fixtureCount++;
+        }
+
+        container.close();
+        return new PortObject[]{container.getTable()};
+    }
+
+    @Override
+    protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+        // Check required ports
+        if (inSpecs[0] == null) {
+            throw new InvalidSettingsException("API connection required");
+        }
+        if (inSpecs[1] == null) {
+            throw new InvalidSettingsException("Reference data required");
+        }
+        if (inSpecs[2] == null) {
+            throw new InvalidSettingsException(
+                "Fixtures table required. Please connect a Fixtures node output to the second input port.");
+        }
+
+        // Verify fixtures table has Fixture_ID column
+        if (inSpecs[2] instanceof DataTableSpec) {
+            DataTableSpec fixturesSpec = (DataTableSpec) inSpecs[2];
+            if (fixturesSpec.findColumnIndex("Fixture_ID") < 0) {
+                throw new InvalidSettingsException(
+                    "Input table must contain a 'Fixture_ID' column. Please connect a Fixtures node output.");
+            }
+        }
+
+        return new PortObjectSpec[]{getOutputSpec()};
     }
 
     /**
-     * Build query parameters based on query type.
+     * Make API call to Football API.
      */
-    private Map<String, String> buildQueryParams() {
-        Map<String, String> params = new HashMap<>();
-        String queryType = m_queryType.getStringValue();
+    private JsonNode callApi(ApiSportsHttpClient client, String endpoint,
+                            Map<String, String> params, ObjectMapper mapper) throws Exception {
+        String jsonResponse = client.get(endpoint, params);
+        JsonNode root = mapper.readTree(jsonResponse);
 
-        if (QUERY_BY_FIXTURE.equals(queryType)) {
-            params.put("fixture", m_fixtureId.getStringValue());
-        } else if (QUERY_BY_LEAGUE.equals(queryType)) {
-            params.put("league", String.valueOf(m_leagueId.getIntValue()));
-            params.put("season", String.valueOf(m_season.getIntValue()));
-        }
-        // QUERY_LIVE doesn't need parameters
-
-        // Optional filters
-        if (!m_bookmaker.getStringValue().isEmpty()) {
-            params.put("bookmaker", m_bookmaker.getStringValue());
-        }
-        if (!m_betType.getStringValue().isEmpty()) {
-            params.put("bet", m_betType.getStringValue());
+        // Check for errors
+        if (root.has("errors") && !root.get("errors").isEmpty()) {
+            throw new Exception("API returned errors: " + root.get("errors").toString());
         }
 
-        return params;
+        // Return response array
+        return root.has("response") ? root.get("response") : null;
     }
 
     /**
-     * Parse odds API response and create output table.
+     * Parse odds API response and add rows to container.
+     * Returns the updated row number.
      */
-    private BufferedDataTable parseOddsResponse(JsonNode response, ExecutionContext exec) {
-        DataTableSpec spec = getOutputSpec();
-        BufferedDataContainer container = exec.createDataContainer(spec);
+    private int parseOddsResponse(JsonNode response, BufferedDataContainer container, int startRowNum,
+                                  ExecutionContext exec) {
+        int rowNum = startRowNum;
 
         if (response != null && response.isArray()) {
-            int rowNum = 0;
-
             for (JsonNode oddsItem : response) {
                 try {
                     // Each odds item may have multiple bookmakers and bets
@@ -163,8 +200,7 @@ public class OddsNodeModel extends AbstractFootballQueryNodeModel {
             }
         }
 
-        container.close();
-        return container.getTable();
+        return rowNum;
     }
 
     /**
@@ -188,8 +224,7 @@ public class OddsNodeModel extends AbstractFootballQueryNodeModel {
         return new DefaultRow(new RowKey("Row" + rowNum), cells);
     }
 
-    @Override
-    protected DataTableSpec getOutputSpec() {
+    private DataTableSpec getOutputSpec() {
         return new DataTableSpec(
             new DataColumnSpecCreator("Fixture_ID", IntCell.TYPE).createSpec(),
             new DataColumnSpecCreator("League", StringCell.TYPE).createSpec(),
@@ -203,28 +238,31 @@ public class OddsNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
-        super.saveSettingsTo(settings);
-        m_queryType.saveSettingsTo(settings);
-        m_fixtureId.saveSettingsTo(settings);
-        m_bookmaker.saveSettingsTo(settings);
-        m_betType.saveSettingsTo(settings);
+        // No settings to save - node configuration comes from input ports
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
-        super.validateSettings(settings);
-        m_queryType.validateSettings(settings);
-        m_fixtureId.validateSettings(settings);
-        m_bookmaker.validateSettings(settings);
-        m_betType.validateSettings(settings);
+        // No settings to validate
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
-        super.loadValidatedSettingsFrom(settings);
-        m_queryType.loadSettingsFrom(settings);
-        m_fixtureId.loadSettingsFrom(settings);
-        m_bookmaker.loadSettingsFrom(settings);
-        m_betType.loadSettingsFrom(settings);
+        // No settings to load
+    }
+
+    @Override
+    protected void reset() {
+        // Nothing to reset
+    }
+
+    @Override
+    protected void loadInternals(File nodeInternDir, ExecutionMonitor exec) {
+        // No internals to load
+    }
+
+    @Override
+    protected void saveInternals(File nodeInternDir, ExecutionMonitor exec) {
+        // No internals to save
     }
 }
