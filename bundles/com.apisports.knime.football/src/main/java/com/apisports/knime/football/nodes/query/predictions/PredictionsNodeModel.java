@@ -11,6 +11,7 @@ import org.knime.core.node.*;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
+import java.io.File;
 import java.util.*;
 
 /**
@@ -235,12 +236,12 @@ public class PredictionsNodeModel extends NodeModel {
     }
 
     @Override
-    protected void loadInternals(NodeInternalsDir nodeInternalsDir, ExecutionMonitor executionMonitor) {
+    protected void loadInternals(File nodeInternDir, ExecutionMonitor exec) {
         // No internals to load
     }
 
     @Override
-    protected void saveInternals(NodeInternalsDir nodeInternalsDir, ExecutionMonitor executionMonitor) {
+    protected void saveInternals(File nodeInternDir, ExecutionMonitor exec) {
         // No internals to save
     }
 }
