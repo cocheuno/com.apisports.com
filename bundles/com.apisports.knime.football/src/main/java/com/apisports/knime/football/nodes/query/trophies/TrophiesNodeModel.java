@@ -13,7 +13,7 @@ public class TrophiesNodeModel extends AbstractFootballQueryNodeModel {
     @Override
     protected void validateExecutionSettings() throws InvalidSettingsException {
         if (m_teamId.getIntValue() <= 0) {
-            throw new InvalidSettingsException("Please select a team (used as player ID for trophies)");
+            throw new InvalidSettingsException("Please select a team");
         }
     }
 
@@ -21,7 +21,7 @@ public class TrophiesNodeModel extends AbstractFootballQueryNodeModel {
     protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
                                               ExecutionContext exec) throws Exception {
         Map<String, String> params = new HashMap<>();
-        params.put("player", String.valueOf(m_teamId.getIntValue()));
+        params.put("team", String.valueOf(m_teamId.getIntValue()));
 
         exec.setMessage("Querying trophies from API...");
         JsonNode response = callApi(client, "/trophies", params, mapper);
