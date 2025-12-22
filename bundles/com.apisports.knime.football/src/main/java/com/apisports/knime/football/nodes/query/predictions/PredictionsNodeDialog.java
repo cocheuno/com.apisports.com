@@ -9,17 +9,11 @@ import java.awt.*;
 
 public class PredictionsNodeDialog extends AbstractFootballQueryNodeDialog {
 
-    private JTextField fixtureIdField;
+    private JComboBox<String> fixtureCombo;
 
     public PredictionsNodeDialog() {
         super();
         addPredictionsSpecificComponents();
-
-        // Hide league/season/team controls since predictions work per-fixture
-        leagueCombo.setEnabled(false);
-        seasonCombo.setEnabled(false);
-        teamCombo.setEnabled(false);
-        teamOptionalCheckbox.setVisible(false);
     }
 
     private void addPredictionsSpecificComponents() {
@@ -27,18 +21,19 @@ public class PredictionsNodeDialog extends AbstractFootballQueryNodeDialog {
         mainPanel.add(new JSeparator(SwingConstants.HORIZONTAL));
         mainPanel.add(Box.createVerticalStrut(10));
 
-        // Fixture ID input
-        JPanel fixtureIdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        fixtureIdPanel.add(new JLabel("Fixture ID:"));
-        fixtureIdField = new JTextField(15);
-        fixtureIdPanel.add(fixtureIdField);
-        mainPanel.add(fixtureIdPanel);
+        // Fixture selection dropdown
+        JPanel fixturePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        fixturePanel.add(new JLabel("Fixture:"));
+        fixtureCombo = new JComboBox<>();
+        fixtureCombo.setPreferredSize(new Dimension(400, 25));
+        fixturePanel.add(fixtureCombo);
+        mainPanel.add(fixturePanel);
 
         // Add help text
         JTextArea helpText = new JTextArea(
-            "Enter a Fixture ID to get match predictions.\n\n" +
-            "To find fixture IDs, use the Fixtures node to query upcoming matches.\n" +
-            "The Fixture_ID column from the Fixtures node output can be used here."
+            "Select a League, Season, and Team to see available fixtures.\n" +
+            "Then select a fixture to get match predictions.\n\n" +
+            "Note: Only upcoming or recent fixtures will show predictions."
         );
         helpText.setEditable(false);
         helpText.setWrapStyleWord(true);
@@ -53,11 +48,25 @@ public class PredictionsNodeDialog extends AbstractFootballQueryNodeDialog {
     protected void loadAdditionalSettings(NodeSettingsRO settings, PortObjectSpec[] specs)
             throws NotConfigurableException {
         String fixtureId = settings.getString(PredictionsNodeModel.CFGKEY_FIXTURE_ID, "");
-        fixtureIdField.setText(fixtureId);
+
+        // Set the fixture ID in the combo if it exists
+        for (int i = 0; i < fixtureCombo.getItemCount(); i++) {
+            String item = fixtureCombo.getItemAt(i);
+            if (item != null && item.startsWith(fixtureId + ":")) {
+                fixtureCombo.setSelectedIndex(i);
+                break;
+            }
+        }
     }
 
     @Override
     protected void saveAdditionalSettings(NodeSettingsWO settings) throws InvalidSettingsException {
-        settings.addString(PredictionsNodeModel.CFGKEY_FIXTURE_ID, fixtureIdField.getText());
+        // Extract fixture ID from selected item (format: "123: Team A vs Team B")
+        String selected = (String) fixtureCombo.getSelectedItem();
+        String fixtureId = "";
+        if (selected != null && selected.contains(":")) {
+            fixtureId = selected.substring(0, selected.indexOf(":"));
+        }
+        settings.addString(PredictionsNodeModel.CFGKEY_FIXTURE_ID, fixtureId);
     }
 }
