@@ -96,8 +96,13 @@ public class OddsNodeModel extends NodeModel {
                 Map<String, String> params = new HashMap<>();
                 params.put("fixture", String.valueOf(fixtureId));
 
+                getLogger().info("Querying odds for fixture ID: " + fixtureId);
                 JsonNode response = callApi(client, "/odds", params, mapper);
-                rowNum = parseOddsResponse(response, container, rowNum, exec);
+
+                // Pass the requested fixture ID to parser for validation
+                int addedRows = parseOddsResponse(response, container, rowNum, fixtureId, exec);
+                getLogger().info("Added " + (addedRows - rowNum) + " odds rows for fixture " + fixtureId);
+                rowNum = addedRows;
             } catch (Exception e) {
                 getLogger().warn("Failed to get odds for fixture " + fixtureId + ": " + e.getMessage());
             }
@@ -154,11 +159,13 @@ public class OddsNodeModel extends NodeModel {
 
     /**
      * Parse odds API response and add rows to container.
+     * Only includes odds for the requested fixture ID.
      * Returns the updated row number.
      */
     private int parseOddsResponse(JsonNode response, BufferedDataContainer container, int startRowNum,
-                                  ExecutionContext exec) {
+                                  int requestedFixtureId, ExecutionContext exec) {
         int rowNum = startRowNum;
+        int skippedItems = 0;
 
         if (response != null && response.isArray()) {
             for (JsonNode oddsItem : response) {
@@ -169,6 +176,15 @@ public class OddsNodeModel extends NodeModel {
                     JsonNode bookmakers = oddsItem.get("bookmakers");
 
                     int fixtureId = fixture != null && fixture.has("id") ? fixture.get("id").asInt() : 0;
+
+                    // VALIDATE: Only process odds for the requested fixture
+                    if (fixtureId != requestedFixtureId) {
+                        getLogger().warn("API returned odds for fixture " + fixtureId +
+                                       " but we requested fixture " + requestedFixtureId + ". Skipping.");
+                        skippedItems++;
+                        continue;
+                    }
+
                     String leagueName = league != null && league.has("name") ? league.get("name").asText() : "";
 
                     if (bookmakers != null && bookmakers.isArray()) {
@@ -197,6 +213,10 @@ public class OddsNodeModel extends NodeModel {
                 } catch (Exception e) {
                     getLogger().warn("Failed to parse odds row: " + e.getMessage());
                 }
+            }
+
+            if (skippedItems > 0) {
+                getLogger().warn("Skipped " + skippedItems + " odds items with mismatched fixture IDs");
             }
         }
 
