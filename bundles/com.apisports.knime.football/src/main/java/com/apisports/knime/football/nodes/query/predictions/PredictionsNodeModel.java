@@ -2,12 +2,17 @@ package com.apisports.knime.football.nodes.query.predictions;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeModel;
+import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDataPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.*;
 import org.knime.core.data.def.*;
 import org.knime.core.node.*;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortObjectSpec;
+import org.knime.core.node.port.PortType;
 import java.util.*;
 
 public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
@@ -16,6 +21,62 @@ public class PredictionsNodeModel extends AbstractFootballQueryNodeModel {
 
     protected final SettingsModelString m_fixtureId =
         new SettingsModelString(CFGKEY_FIXTURE_ID, "");
+
+    /**
+     * Constructor that adds an optional third input port for fixtures data.
+     */
+    public PredictionsNodeModel() {
+        super(
+            new PortType[]{
+                ApiSportsConnectionPortObject.TYPE,
+                ReferenceDataPortObject.TYPE,
+                new PortType(BufferedDataTable.class, true) // Optional fixtures input
+            },
+            new PortType[]{
+                BufferedDataTable.TYPE
+            }
+        );
+    }
+
+    @Override
+    protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        // Get API client from connection port
+        ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
+        ApiSportsHttpClient client = connectionPort.getClient();
+
+        // Get reference data from port
+        ReferenceDataPortObject refDataPort = (ReferenceDataPortObject) inObjects[1];
+        m_dbPath = refDataPort.getDbPath();
+
+        // Load reference data from database
+        loadReferenceData();
+
+        // Note: Optional fixtures port (inObjects[2]) is only used by the dialog
+        // for populating the fixture dropdown. Not needed during execution.
+
+        // Validate settings
+        validateExecutionSettings();
+
+        // Execute endpoint-specific query
+        BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
+
+        return new PortObject[]{result};
+    }
+
+    @Override
+    protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+        // Check first two required ports
+        if (inSpecs[0] == null) {
+            throw new InvalidSettingsException("API connection required");
+        }
+        if (inSpecs[1] == null) {
+            throw new InvalidSettingsException("Reference data required");
+        }
+
+        // Third port (fixtures) is optional, no check needed
+
+        return new PortObjectSpec[]{getOutputSpec()};
+    }
 
     @Override
     protected void validateExecutionSettings() throws InvalidSettingsException {
