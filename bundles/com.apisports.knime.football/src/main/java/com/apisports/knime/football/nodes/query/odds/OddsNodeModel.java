@@ -96,12 +96,31 @@ public class OddsNodeModel extends NodeModel {
                 Map<String, String> params = new HashMap<>();
                 params.put("fixture", String.valueOf(fixtureId));
 
-                getLogger().info("Querying odds for fixture ID: " + fixtureId);
+                getLogger().info("=== Querying odds for fixture ID: " + fixtureId + " ===");
+                getLogger().info("API endpoint: /odds with params: " + params);
+
                 JsonNode response = callApi(client, "/odds", params, mapper);
 
+                // Log response size for debugging
+                if (response != null && response.isArray()) {
+                    getLogger().info("API returned " + response.size() + " odds items for fixture " + fixtureId);
+
+                    // Log first item's fixture ID to see what we're getting
+                    if (response.size() > 0) {
+                        JsonNode firstItem = response.get(0);
+                        JsonNode firstFixture = firstItem.get("fixture");
+                        int firstFixtureId = firstFixture != null && firstFixture.has("id") ?
+                            firstFixture.get("id").asInt() : -1;
+                        getLogger().info("First odds item has fixture ID: " + firstFixtureId);
+                    }
+                } else {
+                    getLogger().info("API returned null or non-array response for fixture " + fixtureId);
+                }
+
                 // Pass the requested fixture ID to parser for validation
+                int rowsBefore = rowNum;
                 int addedRows = parseOddsResponse(response, container, rowNum, fixtureId, exec);
-                getLogger().info("Added " + (addedRows - rowNum) + " odds rows for fixture " + fixtureId);
+                getLogger().info("Added " + (addedRows - rowsBefore) + " odds rows for fixture " + fixtureId);
                 rowNum = addedRows;
             } catch (Exception e) {
                 getLogger().warn("Failed to get odds for fixture " + fixtureId + ": " + e.getMessage());
@@ -166,8 +185,11 @@ public class OddsNodeModel extends NodeModel {
                                   int requestedFixtureId, ExecutionContext exec) {
         int rowNum = startRowNum;
         int skippedItems = 0;
+        int processedItems = 0;
 
         if (response != null && response.isArray()) {
+            getLogger().info("Parsing " + response.size() + " odds items, expecting fixture ID: " + requestedFixtureId);
+
             for (JsonNode oddsItem : response) {
                 try {
                     // Each odds item may have multiple bookmakers and bets
@@ -179,11 +201,14 @@ public class OddsNodeModel extends NodeModel {
 
                     // VALIDATE: Only process odds for the requested fixture
                     if (fixtureId != requestedFixtureId) {
-                        getLogger().warn("API returned odds for fixture " + fixtureId +
-                                       " but we requested fixture " + requestedFixtureId + ". Skipping.");
+                        getLogger().warn("MISMATCH: API returned odds for fixture " + fixtureId +
+                                       " but we requested fixture " + requestedFixtureId + ". Skipping this item.");
                         skippedItems++;
                         continue;
                     }
+
+                    getLogger().info("MATCH: Processing odds for fixture " + fixtureId);
+                    processedItems++;
 
                     String leagueName = league != null && league.has("name") ? league.get("name").asText() : "";
 
@@ -215,9 +240,14 @@ public class OddsNodeModel extends NodeModel {
                 }
             }
 
+            getLogger().info("Parsing complete: " + processedItems + " items matched, " +
+                           skippedItems + " items skipped due to fixture ID mismatch");
+
             if (skippedItems > 0) {
-                getLogger().warn("Skipped " + skippedItems + " odds items with mismatched fixture IDs");
+                getLogger().warn("WARNING: Skipped " + skippedItems + " odds items with mismatched fixture IDs");
             }
+        } else {
+            getLogger().warn("Response is null or not an array");
         }
 
         return rowNum;
