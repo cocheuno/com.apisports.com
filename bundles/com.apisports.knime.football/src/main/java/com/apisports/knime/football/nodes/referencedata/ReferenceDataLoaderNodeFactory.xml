@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<knimeNode icon="./Carovex.png" type="Source">
+<knimeNode icon="icons/Carovex.png" type="Source">
     <name>Reference Data Loader</name>
 
     <shortDescription>
