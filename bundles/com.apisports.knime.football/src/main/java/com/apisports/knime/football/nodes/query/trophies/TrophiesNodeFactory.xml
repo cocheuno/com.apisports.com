@@ -5,10 +5,17 @@
     xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
 
     <name>Trophies</name>
-    <shortDescription>Query player trophies</shortDescription>
+    <shortDescription>Query player or coach trophies</shortDescription>
 
     <fullDescription>
-        <intro><p>Query player trophies from the Football API.</p></intro>
+        <intro>
+            <p>Query trophies from the Football API.</p>
+            <p><b>Important:</b> The trophies endpoint only supports filtering by player ID or coach ID,
+            not by team. To get trophies for a specific player or coach, you need to first use the
+            Players or Coaches node to get their ID, then manually configure this node with that ID.</p>
+            <p>Current limitation: This node returns all available trophies without filtering.
+            Use KNIME filtering nodes to narrow down results.</p>
+        </intro>
     </fullDescription>
 
     <ports>
