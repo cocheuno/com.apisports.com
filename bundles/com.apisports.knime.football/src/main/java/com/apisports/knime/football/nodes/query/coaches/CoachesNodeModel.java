@@ -11,12 +11,21 @@ import java.util.*;
 
 public class CoachesNodeModel extends AbstractFootballQueryNodeModel {
     @Override
+    protected void validateExecutionSettings() throws InvalidSettingsException {
+        // Coaches endpoint requires at least one parameter (team is the most common)
+        if (m_teamId.getIntValue() <= 0) {
+            throw new InvalidSettingsException(
+                "Please select a specific team. The Coaches endpoint requires a team parameter.");
+        }
+    }
+
+    @Override
     protected BufferedDataTable executeQuery(ApiSportsHttpClient client, ObjectMapper mapper,
                                               ExecutionContext exec) throws Exception {
         Map<String, String> params = new HashMap<>();
-        if (m_teamId.getIntValue() > 0) {
-            params.put("team", String.valueOf(m_teamId.getIntValue()));
-        }
+        params.put("team", String.valueOf(m_teamId.getIntValue()));
+
+        System.out.println("Querying /coachs with team=" + m_teamId.getIntValue());
 
         exec.setMessage("Querying coaches from API...");
         JsonNode response = callApi(client, "/coachs", params, mapper);
