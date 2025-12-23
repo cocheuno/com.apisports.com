@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<knimeNode icon="./default.png" type="Manipulator">
+<knimeNode icon="./Carovex.png" type="Manipulator">
     <name>Football Stats</name>
     <shortDescription>Fetches football team statistics from API-Sports</shortDescription>
     <fullDescription>
