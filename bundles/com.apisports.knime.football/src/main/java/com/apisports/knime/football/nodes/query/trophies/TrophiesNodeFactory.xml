@@ -9,18 +9,22 @@
 
     <fullDescription>
         <intro>
-            <p>Query trophies from the Football API.</p>
-            <p><b>Important:</b> The trophies endpoint only supports filtering by player ID or coach ID,
-            not by team. To get trophies for a specific player or coach, you need to first use the
-            Players or Coaches node to get their ID, then manually configure this node with that ID.</p>
-            <p>Current limitation: This node returns all available trophies without filtering.
-            Use KNIME filtering nodes to narrow down results.</p>
+            <p>Queries trophies for players or coaches from the Football API.</p>
+            <p>This node accepts output from either a Players or Coaches node and automatically
+            queries trophies for all individuals in the input table. The node detects whether
+            the input is from a Players or Coaches node by checking for Player_ID or Coach_ID
+            columns and uses the appropriate API parameter.</p>
+            <p><b>Usage:</b> Connect a Players or Coaches node to the third input port. The node
+            will process all players/coaches from the input and return their trophy history.</p>
+            <p><b>Output:</b> Each row represents one trophy won by a player or coach, including
+            the league, country, season, and placement (e.g., "Winner", "2nd Place").</p>
         </intro>
     </fullDescription>
 
     <ports>
         <inPort index="0" name="API Connection">API-Sports connection</inPort>
         <inPort index="1" name="Reference Data">Reference data</inPort>
-        <outPort index="0" name="Trophies">Trophies data table</outPort>
+        <inPort index="2" name="Players or Coaches">Table from Players or Coaches node</inPort>
+        <outPort index="0" name="Trophies">Trophies data table with columns: Person_ID, Person_Name, League, Country, Season, Place</outPort>
     </ports>
 </knimeNode>
