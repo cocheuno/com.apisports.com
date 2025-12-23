@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<knimeNode icon="icons/Carovex.png" type="Manipulator">
+<knimeNode icon="./Carovex.png" type="Manipulator">
     <name>Football Fixtures</name>
     <shortDescription>Fetches football fixtures from API-Sports</shortDescription>
     <fullDescription>
