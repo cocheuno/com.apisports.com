@@ -196,8 +196,10 @@ public class TrophiesNodeModel extends NodeModel {
         return root.get("response");
     }
 
-    @Override
-    protected DataTableSpec getOutputSpec() {
+    /**
+     * Get the output table specification.
+     */
+    private DataTableSpec getOutputSpec() {
         return new DataTableSpec(
             new DataColumnSpecCreator("Person_ID", IntCell.TYPE).createSpec(),
             new DataColumnSpecCreator("Person_Name", StringCell.TYPE).createSpec(),
