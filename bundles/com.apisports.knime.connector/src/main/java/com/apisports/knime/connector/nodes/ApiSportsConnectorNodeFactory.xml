@@ -23,5 +23,8 @@
         <outPort index="0" name="API-Sports Connection">
             Connection to API-Sports service
         </outPort>
+        <outPort index="1" name="Statistics">
+            API usage statistics including call count, cache hits, and total requests
+        </outPort>
     </ports>
 </knimeNode>

@@ -29,8 +29,10 @@ public class ApiSportsHttpClient {
     private final RateLimiterManager rateLimiter;
     private final CacheManager cacheManager;
     private final RequestPipeline requestPipeline;
+    private int apiCallCount = 0;
+    private int cacheHitCount = 0;
 
-    public ApiSportsHttpClient(String apiKey, Sport sport, RateLimiterManager rateLimiter, 
+    public ApiSportsHttpClient(String apiKey, Sport sport, RateLimiterManager rateLimiter,
                                CacheManager cacheManager) {
         this.apiKey = apiKey;
         this.sport = sport;
@@ -55,6 +57,7 @@ public class ApiSportsHttpClient {
         String cacheKey = buildCacheKey(endpoint, queryParams);
         String cachedResponse = cacheManager.get(cacheKey);
         if (cachedResponse != null) {
+            cacheHitCount++;
             return cachedResponse;
         }
 
@@ -78,8 +81,9 @@ public class ApiSportsHttpClient {
 
         // Execute with retry logic
         try {
+            apiCallCount++;  // Increment call count
             HttpResponse<String> response = requestPipeline.execute(httpClient, request);
-            
+
             if (response.statusCode() == 200) {
                 String body = response.body();
                 cacheManager.put(cacheKey, body);
@@ -131,5 +135,26 @@ public class ApiSportsHttpClient {
 
     public Sport getSport() {
         return sport;
+    }
+
+    /**
+     * Get the total number of API calls made (excluding cache hits).
+     */
+    public int getApiCallCount() {
+        return apiCallCount;
+    }
+
+    /**
+     * Get the number of cache hits.
+     */
+    public int getCacheHitCount() {
+        return cacheHitCount;
+    }
+
+    /**
+     * Get total number of requests (API calls + cache hits).
+     */
+    public int getTotalRequestCount() {
+        return apiCallCount + cacheHitCount;
     }
 }
