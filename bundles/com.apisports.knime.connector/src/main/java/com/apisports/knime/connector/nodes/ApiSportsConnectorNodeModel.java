@@ -4,8 +4,6 @@ import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.core.model.Sport;
 import com.apisports.knime.port.ApiSportsConnectionPortObject;
 import com.apisports.knime.port.ApiSportsConnectionPortObjectSpec;
-import org.knime.core.data.*;
-import org.knime.core.data.def.*;
 import org.knime.core.node.*;
 import com.apisports.knime.core.ratelimit.RateLimiterManager;
 import com.apisports.knime.core.cache.CacheManager;
@@ -30,12 +28,10 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
     private final SettingsModelString m_apiKey = new SettingsModelString(CFGKEY_API_KEY, "");
     private final SettingsModelString m_sport = new SettingsModelString(CFGKEY_SPORT, Sport.FOOTBALL.getDisplayName());
     private final SettingsModelString m_tier = new SettingsModelString(CFGKEY_TIER, "free");
-    private ApiSportsHttpClient m_client;
 
     protected ApiSportsConnectorNodeModel() {
         super(new PortType[0], new PortType[]{
-            ApiSportsConnectionPortObject.TYPE,
-            BufferedDataTable.TYPE  // Statistics output
+            ApiSportsConnectionPortObject.TYPE
         });
     }
 
@@ -51,50 +47,12 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
 
         RateLimiterManager rateLimiter = new RateLimiterManager();
         CacheManager cacheManager = new CacheManager();
-        m_client = new ApiSportsHttpClient(apiKey, sport, rateLimiter, cacheManager);
+        ApiSportsHttpClient client = new ApiSportsHttpClient(apiKey, sport, rateLimiter, cacheManager);
         String apiKeyHash = Integer.toHexString(apiKey.hashCode());
         ApiSportsConnectionPortObjectSpec spec = new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier);
-        ApiSportsConnectionPortObject portObject = new ApiSportsConnectionPortObject(spec, m_client);
+        ApiSportsConnectionPortObject portObject = new ApiSportsConnectionPortObject(spec, client);
 
-        // Create statistics table
-        BufferedDataTable statsTable = createStatisticsTable(exec);
-
-        return new PortObject[]{portObject, statsTable};
-    }
-
-    private BufferedDataTable createStatisticsTable(ExecutionContext exec) {
-        DataTableSpec statsSpec = createStatisticsTableSpec();
-        BufferedDataContainer container = exec.createDataContainer(statsSpec);
-
-        if (m_client != null) {
-            DataCell[] cells = new DataCell[]{
-                new StringCell("API Calls"),
-                new IntCell(m_client.getApiCallCount())
-            };
-            container.addRowToTable(new DefaultRow(new RowKey("API_Calls"), cells));
-
-            cells = new DataCell[]{
-                new StringCell("Cache Hits"),
-                new IntCell(m_client.getCacheHitCount())
-            };
-            container.addRowToTable(new DefaultRow(new RowKey("Cache_Hits"), cells));
-
-            cells = new DataCell[]{
-                new StringCell("Total Requests"),
-                new IntCell(m_client.getTotalRequestCount())
-            };
-            container.addRowToTable(new DefaultRow(new RowKey("Total_Requests"), cells));
-        }
-
-        container.close();
-        return container.getTable();
-    }
-
-    private DataTableSpec createStatisticsTableSpec() {
-        return new DataTableSpec(
-            new DataColumnSpecCreator("Metric", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Value", IntCell.TYPE).createSpec()
-        );
+        return new PortObject[]{portObject};
     }
 
     @Override
@@ -109,8 +67,7 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
 
         String apiKeyHash = Integer.toHexString(apiKey.hashCode());
         return new PortObjectSpec[]{
-            new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier),
-            createStatisticsTableSpec()
+            new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier)
         };
     }
 
@@ -149,6 +106,6 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
 
     @Override
     protected void reset() {
-        m_client = null;
+        // Nothing to reset
     }
 }

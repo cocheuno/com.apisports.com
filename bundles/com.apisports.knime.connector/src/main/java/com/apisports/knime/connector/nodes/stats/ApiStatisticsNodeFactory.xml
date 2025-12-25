@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./Carovex.png" type="Other">
+    <name>API Statistics</name>
+    <shortDescription>
+        Displays API usage statistics
+    </shortDescription>
+    <fullDescription>
+        <intro>
+            Shows statistics about API calls made through the API-Sports connection.
+            This includes the number of actual API calls, cache hits, and total requests.
+            Place this node after your data-fetching nodes to see cumulative statistics.
+        </intro>
+    </fullDescription>
+    <ports>
+        <inPort index="0" name="API-Sports Connection">
+            Connection from API-Sports Connector node
+        </inPort>
+        <outPort index="0" name="Statistics">
+            Table containing API usage statistics with three rows:
+            - API Calls: Number of actual calls made to the API
+            - Cache Hits: Number of requests served from cache
+            - Total Requests: Sum of API calls and cache hits
+        </outPort>
+    </ports>
+</knimeNode>
