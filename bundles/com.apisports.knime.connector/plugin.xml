@@ -4,6 +4,8 @@
    <extension point="org.knime.workbench.repository.nodes">
       <node category-path="/carovex/apisports"
             factory-class="com.apisports.knime.connector.nodes.ApiSportsConnectorNodeFactory"/>
+      <node category-path="/carovex/apisports"
+            factory-class="com.apisports.knime.connector.nodes.stats.ApiStatisticsNodeFactory"/>
    </extension>
    <extension point="org.knime.workbench.repository.categories">
       <category level-id="carovex" name="Carovex" path="/" icon="icons/carovex.png"/>
