@@ -189,9 +189,9 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
                 cells[colIdx++] = getNestedIntCell(fixtures, "draws", "home");
                 cells[colIdx++] = getNestedIntCell(fixtures, "draws", "away");
                 cells[colIdx++] = getNestedIntCell(fixtures, "draws", "total");
-                cells[colIdx++] = getNestedIntCell(fixtures, "losses", "home");
-                cells[colIdx++] = getNestedIntCell(fixtures, "losses", "away");
-                cells[colIdx++] = getNestedIntCell(fixtures, "losses", "total");
+                cells[colIdx++] = getNestedIntCell(fixtures, "loses", "home");
+                cells[colIdx++] = getNestedIntCell(fixtures, "loses", "away");
+                cells[colIdx++] = getNestedIntCell(fixtures, "loses", "total");
             } else {
                 colIdx += 12;
             }
