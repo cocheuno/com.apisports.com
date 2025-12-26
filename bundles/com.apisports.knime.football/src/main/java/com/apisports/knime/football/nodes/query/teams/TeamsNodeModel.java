@@ -150,8 +150,8 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
         JsonNode team = teamItem.get("team");
         JsonNode venue = teamItem.get("venue");
 
-        // Create cells array (67 columns total)
-        DataCell[] cells = new DataCell[67];
+        // Create cells array (62 columns total)
+        DataCell[] cells = new DataCell[62];
         int colIdx = 0;
 
         // Team Information (7 columns)
@@ -303,7 +303,7 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
             }
         } else {
             // No statistics - fill remaining columns with missing cells
-            while (colIdx < 67) {
+            while (colIdx < 62) {
                 cells[colIdx++] = DataType.getMissingCell();
             }
         }
