@@ -150,8 +150,8 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
         JsonNode team = teamItem.get("team");
         JsonNode venue = teamItem.get("venue");
 
-        // Create cells array (62 columns total)
-        DataCell[] cells = new DataCell[62];
+        // Create cells array (146 columns total)
+        DataCell[] cells = new DataCell[146];
         int colIdx = 0;
 
         // Team Information (7 columns)
@@ -209,8 +209,48 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
                     cells[colIdx++] = getDoubleCell(forAverage, "home");
                     cells[colIdx++] = getDoubleCell(forAverage, "away");
                     cells[colIdx++] = getDoubleCell(forAverage, "total");
+
+                    // Goals For - Minute Distribution (16 columns)
+                    JsonNode forMinute = goalsFor.get("minute");
+                    if (forMinute != null) {
+                        cells[colIdx++] = getIntCell(forMinute.get("0-15"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("0-15"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("16-30"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("16-30"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("31-45"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("31-45"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("46-60"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("46-60"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("61-75"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("61-75"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("76-90"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("76-90"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("91-105"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("91-105"), "percentage");
+                        cells[colIdx++] = getIntCell(forMinute.get("106-120"), "total");
+                        cells[colIdx++] = getStringCell(forMinute.get("106-120"), "percentage");
+                    } else {
+                        colIdx += 16;
+                    }
+
+                    // Goals For - Over/Under (10 columns)
+                    JsonNode forOverUnder = goalsFor.get("under_over");
+                    if (forOverUnder != null) {
+                        cells[colIdx++] = getIntCell(forOverUnder.get("0.5"), "over");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("0.5"), "under");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("1.5"), "over");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("1.5"), "under");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("2.5"), "over");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("2.5"), "under");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("3.5"), "over");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("3.5"), "under");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("4.5"), "over");
+                        cells[colIdx++] = getIntCell(forOverUnder.get("4.5"), "under");
+                    } else {
+                        colIdx += 10;
+                    }
                 } else {
-                    colIdx += 6;
+                    colIdx += 32; // 6 + 16 + 10
                 }
 
                 // Goals Against (6 columns)
@@ -224,11 +264,51 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
                     cells[colIdx++] = getDoubleCell(againstAverage, "home");
                     cells[colIdx++] = getDoubleCell(againstAverage, "away");
                     cells[colIdx++] = getDoubleCell(againstAverage, "total");
+
+                    // Goals Against - Minute Distribution (16 columns)
+                    JsonNode againstMinute = goalsAgainst.get("minute");
+                    if (againstMinute != null) {
+                        cells[colIdx++] = getIntCell(againstMinute.get("0-15"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("0-15"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("16-30"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("16-30"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("31-45"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("31-45"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("46-60"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("46-60"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("61-75"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("61-75"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("76-90"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("76-90"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("91-105"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("91-105"), "percentage");
+                        cells[colIdx++] = getIntCell(againstMinute.get("106-120"), "total");
+                        cells[colIdx++] = getStringCell(againstMinute.get("106-120"), "percentage");
+                    } else {
+                        colIdx += 16;
+                    }
+
+                    // Goals Against - Over/Under (10 columns)
+                    JsonNode againstOverUnder = goalsAgainst.get("under_over");
+                    if (againstOverUnder != null) {
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("0.5"), "over");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("0.5"), "under");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("1.5"), "over");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("1.5"), "under");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("2.5"), "over");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("2.5"), "under");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("3.5"), "over");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("3.5"), "under");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("4.5"), "over");
+                        cells[colIdx++] = getIntCell(againstOverUnder.get("4.5"), "under");
+                    } else {
+                        colIdx += 10;
+                    }
                 } else {
-                    colIdx += 6;
+                    colIdx += 32; // 6 + 16 + 10
                 }
             } else {
-                colIdx += 12;
+                colIdx += 64; // 32 for Goals For + 32 for Goals Against
             }
 
             // Biggest Stats (11 columns)
@@ -301,9 +381,60 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
             } else {
                 cells[colIdx++] = DataType.getMissingCell();
             }
+
+            // Cards - Yellow by Minute (16 columns)
+            JsonNode cards = statistics.get("cards");
+            if (cards != null) {
+                JsonNode yellow = cards.get("yellow");
+                if (yellow != null) {
+                    cells[colIdx++] = getIntCell(yellow.get("0-15"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("0-15"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("16-30"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("16-30"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("31-45"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("31-45"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("46-60"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("46-60"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("61-75"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("61-75"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("76-90"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("76-90"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("91-105"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("91-105"), "percentage");
+                    cells[colIdx++] = getIntCell(yellow.get("106-120"), "total");
+                    cells[colIdx++] = getStringCell(yellow.get("106-120"), "percentage");
+                } else {
+                    colIdx += 16;
+                }
+
+                // Cards - Red by Minute (16 columns)
+                JsonNode red = cards.get("red");
+                if (red != null) {
+                    cells[colIdx++] = getIntCell(red.get("0-15"), "total");
+                    cells[colIdx++] = getStringCell(red.get("0-15"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("16-30"), "total");
+                    cells[colIdx++] = getStringCell(red.get("16-30"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("31-45"), "total");
+                    cells[colIdx++] = getStringCell(red.get("31-45"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("46-60"), "total");
+                    cells[colIdx++] = getStringCell(red.get("46-60"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("61-75"), "total");
+                    cells[colIdx++] = getStringCell(red.get("61-75"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("76-90"), "total");
+                    cells[colIdx++] = getStringCell(red.get("76-90"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("91-105"), "total");
+                    cells[colIdx++] = getStringCell(red.get("91-105"), "percentage");
+                    cells[colIdx++] = getIntCell(red.get("106-120"), "total");
+                    cells[colIdx++] = getStringCell(red.get("106-120"), "percentage");
+                } else {
+                    colIdx += 16;
+                }
+            } else {
+                colIdx += 32; // 16 for yellow + 16 for red
+            }
         } else {
             // No statistics - fill remaining columns with missing cells
-            while (colIdx < 62) {
+            while (colIdx < 146) {
                 cells[colIdx++] = DataType.getMissingCell();
             }
         }
@@ -401,6 +532,36 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
             new DataColumnSpecCreator("Goals_For_Average_Away", DoubleCell.TYPE).createSpec(),
             new DataColumnSpecCreator("Goals_For_Average_Total", DoubleCell.TYPE).createSpec(),
 
+            // Goals For - Minute Distribution
+            new DataColumnSpecCreator("Goals_For_Minute_0_15_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_0_15_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_16_30_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_16_30_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_31_45_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_31_45_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_46_60_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_46_60_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_61_75_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_61_75_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_76_90_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_76_90_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_91_105_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_91_105_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_106_120_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Minute_106_120_Percentage", StringCell.TYPE).createSpec(),
+
+            // Goals For - Over/Under
+            new DataColumnSpecCreator("Goals_For_Over_Under_0_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_0_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_1_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_1_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_2_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_2_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_3_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_3_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_4_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_For_Over_Under_4_5_Under", IntCell.TYPE).createSpec(),
+
             // Goals Against
             new DataColumnSpecCreator("Goals_Against_Total_Home", IntCell.TYPE).createSpec(),
             new DataColumnSpecCreator("Goals_Against_Total_Away", IntCell.TYPE).createSpec(),
@@ -408,6 +569,36 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
             new DataColumnSpecCreator("Goals_Against_Average_Home", DoubleCell.TYPE).createSpec(),
             new DataColumnSpecCreator("Goals_Against_Average_Away", DoubleCell.TYPE).createSpec(),
             new DataColumnSpecCreator("Goals_Against_Average_Total", DoubleCell.TYPE).createSpec(),
+
+            // Goals Against - Minute Distribution
+            new DataColumnSpecCreator("Goals_Against_Minute_0_15_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_0_15_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_16_30_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_16_30_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_31_45_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_31_45_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_46_60_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_46_60_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_61_75_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_61_75_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_76_90_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_76_90_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_91_105_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_91_105_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_106_120_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Minute_106_120_Percentage", StringCell.TYPE).createSpec(),
+
+            // Goals Against - Over/Under
+            new DataColumnSpecCreator("Goals_Against_Over_Under_0_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_0_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_1_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_1_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_2_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_2_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_3_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_3_5_Under", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_4_5_Over", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Goals_Against_Over_Under_4_5_Under", IntCell.TYPE).createSpec(),
 
             // Biggest Stats
             new DataColumnSpecCreator("Biggest_Streak_Wins", IntCell.TYPE).createSpec(),
@@ -438,7 +629,43 @@ public class TeamsNodeModel extends AbstractFootballQueryNodeModel {
             new DataColumnSpecCreator("Penalty_Total", IntCell.TYPE).createSpec(),
 
             // Lineups (most used formations)
-            new DataColumnSpecCreator("Lineups", StringCell.TYPE).createSpec()
+            new DataColumnSpecCreator("Lineups", StringCell.TYPE).createSpec(),
+
+            // Cards - Yellow by Minute
+            new DataColumnSpecCreator("Cards_Yellow_Minute_0_15_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_0_15_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_16_30_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_16_30_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_31_45_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_31_45_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_46_60_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_46_60_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_61_75_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_61_75_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_76_90_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_76_90_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_91_105_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_91_105_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_106_120_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Yellow_Minute_106_120_Percentage", StringCell.TYPE).createSpec(),
+
+            // Cards - Red by Minute
+            new DataColumnSpecCreator("Cards_Red_Minute_0_15_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_0_15_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_16_30_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_16_30_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_31_45_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_31_45_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_46_60_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_46_60_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_61_75_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_61_75_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_76_90_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_76_90_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_91_105_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_91_105_Percentage", StringCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_106_120_Total", IntCell.TYPE).createSpec(),
+            new DataColumnSpecCreator("Cards_Red_Minute_106_120_Percentage", StringCell.TYPE).createSpec()
         );
     }
 
