@@ -99,6 +99,14 @@ public class ReferenceDAO implements AutoCloseable {
                 ")"
             );
 
+            // Metadata table for tracking cache timestamps
+            stmt.execute(
+                "CREATE TABLE IF NOT EXISTS metadata (" +
+                "  key TEXT PRIMARY KEY," +
+                "  value TEXT" +
+                ")"
+            );
+
             // Create indices for faster queries
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_leagues_country ON leagues(country_name)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_seasons_league ON seasons(league_id)");
@@ -116,6 +124,7 @@ public class ReferenceDAO implements AutoCloseable {
             stmt.execute("DELETE FROM seasons");
             stmt.execute("DELETE FROM leagues");
             stmt.execute("DELETE FROM countries");
+            stmt.execute("DELETE FROM metadata");
         }
     }
 
@@ -130,6 +139,67 @@ public class ReferenceDAO implements AutoCloseable {
             stmt.execute("DELETE FROM seasons");
             stmt.execute("DELETE FROM leagues");
         }
+    }
+
+    // ========== Metadata Operations ==========
+
+    /**
+     * Get the timestamp when reference data was last updated.
+     * @return Timestamp in milliseconds, or 0 if never updated
+     */
+    public long getLastUpdateTimestamp() throws SQLException {
+        String sql = "SELECT value FROM metadata WHERE key = 'last_update_timestamp'";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return Long.parseLong(rs.getString("value"));
+            }
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+        return 0;
+    }
+
+    /**
+     * Set the timestamp when reference data was last updated.
+     * @param timestamp Timestamp in milliseconds
+     */
+    public void setLastUpdateTimestamp(long timestamp) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO metadata (key, value) VALUES ('last_update_timestamp', ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, String.valueOf(timestamp));
+            pstmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Check if reference data is stale based on TTL.
+     * @param ttlSeconds Time-to-live in seconds
+     * @return true if data is stale and needs refresh, false if still fresh
+     */
+    public boolean isDataStale(int ttlSeconds) throws SQLException {
+        long lastUpdate = getLastUpdateTimestamp();
+        if (lastUpdate == 0) {
+            return true; // No data loaded yet
+        }
+        long currentTime = System.currentTimeMillis();
+        long ageSeconds = (currentTime - lastUpdate) / 1000;
+        return ageSeconds >= ttlSeconds;
+    }
+
+    /**
+     * Check if the database has any data loaded.
+     * @return true if leagues exist, false otherwise
+     */
+    public boolean hasData() throws SQLException {
+        String sql = "SELECT COUNT(*) as count FROM leagues";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getInt("count") > 0;
+            }
+        }
+        return false;
     }
 
     // ========== Country Operations ==========

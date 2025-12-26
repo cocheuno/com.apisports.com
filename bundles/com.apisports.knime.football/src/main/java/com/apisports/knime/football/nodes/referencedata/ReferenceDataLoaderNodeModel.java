@@ -107,17 +107,46 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         exec.setProgress(0.05);
 
         try (ReferenceDAO dao = new ReferenceDAO(dbPath)) {
-            // Clear database if requested
+            // Check if data is fresh based on cache TTL
+            int cacheTtl = m_cacheTtl.getIntValue();
+            boolean dataStale = dao.isDataStale(cacheTtl);
+            boolean hasData = dao.hasData();
+
+            // If "Clear and Reload" is checked, always reload
             if (m_clearAndReload.getBooleanValue()) {
-                exec.setMessage("Clearing existing data...");
+                exec.setMessage("Clearing existing data (Clear and Reload selected)...");
                 dao.clearAll();
-                getLogger().info("Database cleared");
-            } else {
-                // Always clear leagues/seasons/teams to ensure database matches current filters
+                getLogger().info("Database cleared - will reload all data");
+                dataStale = true; // Force reload
+            }
+            // If data exists and is still fresh, skip loading
+            else if (hasData && !dataStale) {
+                long lastUpdate = dao.getLastUpdateTimestamp();
+                long ageSeconds = (System.currentTimeMillis() - lastUpdate) / 1000;
+                exec.setMessage("Using cached data (age: " + ageSeconds + "s, TTL: " + cacheTtl + "s)");
+                getLogger().info("Reference data is still fresh (age: " + ageSeconds + " seconds, TTL: " +
+                               cacheTtl + " seconds) - skipping reload");
+
+                // Return existing database reference without reloading
+                ReferenceDataPortObject output = new ReferenceDataPortObject(dbPath);
+                exec.setProgress(1.0);
+                return new PortObject[]{output};
+            }
+            // Data is stale or doesn't exist - reload
+            else {
+                if (hasData) {
+                    long lastUpdate = dao.getLastUpdateTimestamp();
+                    long ageSeconds = (System.currentTimeMillis() - lastUpdate) / 1000;
+                    exec.setMessage("Data is stale (age: " + ageSeconds + "s, TTL: " + cacheTtl + "s) - reloading...");
+                    getLogger().info("Reference data is stale (age: " + ageSeconds + " seconds, TTL: " +
+                                   cacheTtl + " seconds) - reloading");
+                } else {
+                    exec.setMessage("No cached data found - loading...");
+                    getLogger().info("No cached data found - performing initial load");
+                }
+                // Clear leagues/seasons/teams to ensure database matches current filters
                 // (Countries remain since they're always loaded)
-                exec.setMessage("Clearing previous leagues/seasons/teams...");
                 dao.clearLeaguesAndRelatedData();
-                getLogger().info("Cleared previous leagues/seasons/teams");
             }
 
             // Get country filter
@@ -171,6 +200,10 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
 
             exec.setMessage("Finalizing...");
             exec.setProgress(0.95);
+
+            // Update timestamp to mark data as fresh
+            dao.setLastUpdateTimestamp(System.currentTimeMillis());
+            getLogger().info("Updated cache timestamp - data will remain fresh for " + cacheTtl + " seconds");
 
             // Create port object with DB path
             ReferenceDataPortObject output = new ReferenceDataPortObject(dbPath);
