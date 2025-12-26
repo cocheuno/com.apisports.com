@@ -202,6 +202,46 @@ public class ReferenceDAO implements AutoCloseable {
         return false;
     }
 
+    /**
+     * Get the configuration hash that was used when data was last loaded.
+     * @return Configuration hash string, or null if not set
+     */
+    public String getConfigurationHash() throws SQLException {
+        String sql = "SELECT value FROM metadata WHERE key = 'config_hash'";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getString("value");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Set the configuration hash for the current data load.
+     * @param configHash Configuration hash string
+     */
+    public void setConfigurationHash(String configHash) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO metadata (key, value) VALUES ('config_hash', ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, configHash);
+            pstmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Check if configuration has changed since last load.
+     * @param currentConfigHash Current configuration hash
+     * @return true if configuration changed, false if same
+     */
+    public boolean hasConfigurationChanged(String currentConfigHash) throws SQLException {
+        String storedHash = getConfigurationHash();
+        if (storedHash == null) {
+            return true; // No stored config - assume changed
+        }
+        return !storedHash.equals(currentConfigHash);
+    }
+
     // ========== Country Operations ==========
 
     public void upsertCountries(List<Country> countries) throws SQLException {

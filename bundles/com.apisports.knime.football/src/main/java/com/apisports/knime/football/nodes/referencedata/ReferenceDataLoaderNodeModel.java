@@ -107,10 +107,14 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         exec.setProgress(0.05);
 
         try (ReferenceDAO dao = new ReferenceDAO(dbPath)) {
-            // Check if data is fresh based on cache TTL
+            // Generate configuration hash based on current settings
+            String currentConfigHash = generateConfigurationHash();
+
+            // Check if data is fresh based on cache TTL and configuration
             int cacheTtl = m_cacheTtl.getIntValue();
             boolean dataStale = dao.isDataStale(cacheTtl);
             boolean hasData = dao.hasData();
+            boolean configChanged = dao.hasConfigurationChanged(currentConfigHash);
 
             // If "Clear and Reload" is checked, always reload
             if (m_clearAndReload.getBooleanValue()) {
@@ -118,6 +122,12 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                 dao.clearAll();
                 getLogger().info("Database cleared - will reload all data");
                 dataStale = true; // Force reload
+            }
+            // If configuration changed, reload even if data is fresh
+            else if (hasData && configChanged) {
+                exec.setMessage("Configuration changed - reloading...");
+                getLogger().info("Configuration has changed - reloading reference data");
+                dao.clearLeaguesAndRelatedData();
             }
             // If data exists and is still fresh, skip loading
             else if (hasData && !dataStale) {
@@ -201,8 +211,9 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             exec.setMessage("Finalizing...");
             exec.setProgress(0.95);
 
-            // Update timestamp to mark data as fresh
+            // Update timestamp and configuration hash to mark data as fresh
             dao.setLastUpdateTimestamp(System.currentTimeMillis());
+            dao.setConfigurationHash(currentConfigHash);
             getLogger().info("Updated cache timestamp - data will remain fresh for " + cacheTtl + " seconds");
 
             // Create port object with DB path
@@ -562,5 +573,33 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
                                  final org.knime.core.node.ExecutionMonitor exec)
             throws java.io.IOException, org.knime.core.node.CanceledExecutionException {
         // No internal state to save
+    }
+
+    /**
+     * Generate a hash of the current configuration to detect changes.
+     * Includes: country filter, selected seasons, begin/end dates, load teams flag
+     */
+    private String generateConfigurationHash() {
+        StringBuilder config = new StringBuilder();
+
+        // Country filter
+        String[] countries = m_countryFilter.getStringArrayValue();
+        java.util.Arrays.sort(countries); // Sort for consistent hashing
+        config.append("countries:").append(String.join(",", countries)).append(";");
+
+        // Selected seasons
+        String[] seasons = m_selectedSeasons.getStringArrayValue();
+        java.util.Arrays.sort(seasons); // Sort for consistent hashing
+        config.append("seasons:").append(String.join(",", seasons)).append(";");
+
+        // Date range
+        config.append("beginDate:").append(m_beginDate.getStringValue()).append(";");
+        config.append("endDate:").append(m_endDate.getStringValue()).append(";");
+
+        // Load teams flag
+        config.append("loadTeams:").append(m_loadTeams.getBooleanValue());
+
+        // Return hash of configuration string
+        return String.valueOf(config.toString().hashCode());
     }
 }
