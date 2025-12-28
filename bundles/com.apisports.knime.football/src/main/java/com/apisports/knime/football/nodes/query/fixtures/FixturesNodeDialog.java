@@ -25,6 +25,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
     private JCheckBox includeEventsCheck;
     private JCheckBox includeLineupsCheck;
     private JCheckBox includeStatisticsCheck;
+    private JCheckBox includePlayerStatsCheck;
     private JComboBox<TeamItem> team2Combo;
 
     // Panels that show/hide based on query type
@@ -124,9 +125,11 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         includeEventsCheck = new JCheckBox("Events");
         includeLineupsCheck = new JCheckBox("Lineups");
         includeStatisticsCheck = new JCheckBox("Statistics");
+        includePlayerStatsCheck = new JCheckBox("Player Stats");
         includePanel.add(includeEventsCheck);
         includePanel.add(includeLineupsCheck);
         includePanel.add(includeStatisticsCheck);
+        includePanel.add(includePlayerStatsCheck);
         mainPanel.add(includePanel);
 
         // Add help text
@@ -235,6 +238,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         boolean includeEvents = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_EVENTS, false);
         boolean includeLineups = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_LINEUPS, false);
         boolean includeStatistics = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_STATISTICS, false);
+        boolean includePlayerStats = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_PLAYER_STATS, false);
 
         // Set values in UI components
         queryTypeCombo.setSelectedItem(queryType);
@@ -245,6 +249,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         includeEventsCheck.setSelected(includeEvents);
         includeLineupsCheck.setSelected(includeLineups);
         includeStatisticsCheck.setSelected(includeStatistics);
+        includePlayerStatsCheck.setSelected(includePlayerStats);
 
         // Populate and select team2 for H2H queries
         populateTeam2Combo();
@@ -272,5 +277,6 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_EVENTS, includeEventsCheck.isSelected());
         settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_LINEUPS, includeLineupsCheck.isSelected());
         settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_STATISTICS, includeStatisticsCheck.isSelected());
+        settings.addBoolean(FixturesNodeModel.CFGKEY_INCLUDE_PLAYER_STATS, includePlayerStatsCheck.isSelected());
     }
 }
