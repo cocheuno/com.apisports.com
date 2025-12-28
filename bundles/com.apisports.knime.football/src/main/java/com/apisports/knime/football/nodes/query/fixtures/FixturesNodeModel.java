@@ -12,7 +12,10 @@ import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.RowKey;
 import org.knime.core.data.def.DefaultRow;
 import org.knime.core.data.def.IntCell;
+import org.knime.core.data.def.LongCell;
+import org.knime.core.data.def.BooleanCell;
 import org.knime.core.data.def.StringCell;
+import org.knime.core.data.DataType;
 import org.knime.core.node.BufferedDataContainer;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ExecutionContext;
@@ -150,7 +153,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         // Parse response and create output table
         exec.setMessage("Parsing results...");
-        BufferedDataTable result = parseFixturesResponse(response, exec);
+        BufferedDataTable result = parseFixturesResponse(response, client, mapper, exec);
 
         getLogger().info("Retrieved " + result.size() + " fixtures");
         return result;
@@ -232,16 +235,50 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
     /**
      * Parse fixtures API response and create output table.
      */
-    private BufferedDataTable parseFixturesResponse(JsonNode response, ExecutionContext exec) {
+    private BufferedDataTable parseFixturesResponse(JsonNode response, ApiSportsHttpClient client,
+                                                     ObjectMapper mapper, ExecutionContext exec) throws Exception {
         DataTableSpec spec = getOutputSpec();
         BufferedDataContainer container = exec.createDataContainer(spec);
 
         if (response != null && response.isArray()) {
             int rowNum = 0;
+            int totalFixtures = response.size();
 
             for (JsonNode fixtureItem : response) {
                 try {
-                    DataRow row = parseFixtureRow(fixtureItem, rowNum);
+                    // Extract fixture ID for additional API calls
+                    JsonNode fixture = fixtureItem.get("fixture");
+                    int fixtureId = fixture != null && fixture.has("id") ? fixture.get("id").asInt() : 0;
+
+                    // Fetch additional data if checkboxes are enabled
+                    JsonNode events = null;
+                    JsonNode statistics = null;
+                    JsonNode lineups = null;
+
+                    if (fixtureId > 0) {
+                        if (m_includeEvents.getBooleanValue()) {
+                            exec.setMessage(String.format("Fetching events for fixture %d (%d/%d)...",
+                                                         fixtureId, rowNum + 1, totalFixtures));
+                            events = callApi(client, "/fixtures/events",
+                                           Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                        }
+
+                        if (m_includeStatistics.getBooleanValue()) {
+                            exec.setMessage(String.format("Fetching statistics for fixture %d (%d/%d)...",
+                                                         fixtureId, rowNum + 1, totalFixtures));
+                            statistics = callApi(client, "/fixtures/statistics",
+                                               Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                        }
+
+                        if (m_includeLineups.getBooleanValue()) {
+                            exec.setMessage(String.format("Fetching lineups for fixture %d (%d/%d)...",
+                                                         fixtureId, rowNum + 1, totalFixtures));
+                            lineups = callApi(client, "/fixtures/lineups",
+                                            Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                        }
+                    }
+
+                    DataRow row = parseFixtureRow(fixtureItem, events, statistics, lineups, rowNum);
                     container.addRowToTable(row);
                     rowNum++;
                 } catch (Exception e) {
@@ -257,82 +294,673 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
     /**
      * Parse a single fixture JSON object into a DataRow.
      */
-    private DataRow parseFixtureRow(JsonNode fixtureItem, int rowNum) {
+    private DataRow parseFixtureRow(JsonNode fixtureItem, JsonNode events, JsonNode statistics,
+                                    JsonNode lineups, int rowNum) {
         JsonNode fixture = fixtureItem.get("fixture");
         JsonNode league = fixtureItem.get("league");
         JsonNode teams = fixtureItem.get("teams");
         JsonNode goals = fixtureItem.get("goals");
         JsonNode score = fixtureItem.get("score");
 
-        // Extract fixture data
-        int fixtureId = fixture != null && fixture.has("id") ? fixture.get("id").asInt() : 0;
-        String date = fixture != null && fixture.has("date") ? fixture.get("date").asText() : "";
-        String status = fixture != null && fixture.has("status") && fixture.get("status").has("long")
-            ? fixture.get("status").get("long").asText() : "";
-        String venue = fixture != null && fixture.has("venue") && fixture.get("venue").has("name")
-            ? fixture.get("venue").get("name").asText() : "";
+        // Calculate total column count based on enabled options
+        int totalColumns = 40;  // Base columns
+        if (m_includeEvents.getBooleanValue()) totalColumns += 18;
+        if (m_includeStatistics.getBooleanValue()) totalColumns += 32;
+        if (m_includeLineups.getBooleanValue()) totalColumns += 20;
 
-        // Extract league data
-        int leagueId = league != null && league.has("id") ? league.get("id").asInt() : 0;
-        String leagueName = league != null && league.has("name") ? league.get("name").asText() : "";
-        int season = league != null && league.has("season") ? league.get("season").asInt() : 0;
-        String round = league != null && league.has("round") ? league.get("round").asText() : "";
+        // Create cells array
+        DataCell[] cells = new DataCell[totalColumns];
+        int colIdx = 0;
 
-        // Extract teams data
-        String homeTeam = teams != null && teams.has("home") && teams.get("home").has("name")
-            ? teams.get("home").get("name").asText() : "";
-        String awayTeam = teams != null && teams.has("away") && teams.get("away").has("name")
-            ? teams.get("away").get("name").asText() : "";
-        int homeTeamId = teams != null && teams.has("home") && teams.get("home").has("id")
-            ? teams.get("home").get("id").asInt() : 0;
-        int awayTeamId = teams != null && teams.has("away") && teams.get("away").has("id")
-            ? teams.get("away").get("id").asInt() : 0;
+        // Fixture Information (14 columns)
+        cells[colIdx++] = getIntCell(fixture, "id");
+        cells[colIdx++] = getStringCell(fixture, "referee");
+        cells[colIdx++] = getStringCell(fixture, "timezone");
+        cells[colIdx++] = getStringCell(fixture, "date");
+        cells[colIdx++] = getLongCell(fixture, "timestamp");
 
-        // Extract goals
-        String homeGoals = goals != null && goals.has("home") && !goals.get("home").isNull()
-            ? String.valueOf(goals.get("home").asInt()) : "";
-        String awayGoals = goals != null && goals.has("away") && !goals.get("away").isNull()
-            ? String.valueOf(goals.get("away").asInt()) : "";
+        JsonNode periods = fixture != null ? fixture.get("periods") : null;
+        cells[colIdx++] = getLongCell(periods, "first");
+        cells[colIdx++] = getLongCell(periods, "second");
 
-        // Create row cells
-        DataCell[] cells = new DataCell[]{
-            new IntCell(fixtureId),
-            new StringCell(date),
-            new StringCell(status),
-            new IntCell(leagueId),
-            new StringCell(leagueName),
-            new IntCell(season),
-            new StringCell(round),
-            new IntCell(homeTeamId),
-            new StringCell(homeTeam),
-            new IntCell(awayTeamId),
-            new StringCell(awayTeam),
-            new StringCell(homeGoals),
-            new StringCell(awayGoals),
-            new StringCell(venue)
-        };
+        JsonNode venue = fixture != null ? fixture.get("venue") : null;
+        cells[colIdx++] = getIntCell(venue, "id");
+        cells[colIdx++] = getStringCell(venue, "name");
+        cells[colIdx++] = getStringCell(venue, "city");
+
+        JsonNode status = fixture != null ? fixture.get("status") : null;
+        cells[colIdx++] = getStringCell(status, "long");
+        cells[colIdx++] = getStringCell(status, "short");
+        cells[colIdx++] = getIntCell(status, "elapsed");
+        cells[colIdx++] = getIntCell(status, "extra");
+
+        // League Information (7 columns)
+        cells[colIdx++] = getIntCell(league, "id");
+        cells[colIdx++] = getStringCell(league, "name");
+        cells[colIdx++] = getStringCell(league, "country");
+        cells[colIdx++] = getStringCell(league, "logo");
+        cells[colIdx++] = getStringCell(league, "flag");
+        cells[colIdx++] = getIntCell(league, "season");
+        cells[colIdx++] = getStringCell(league, "round");
+
+        // Teams Information (8 columns)
+        JsonNode homeTeam = teams != null ? teams.get("home") : null;
+        JsonNode awayTeam = teams != null ? teams.get("away") : null;
+
+        cells[colIdx++] = getIntCell(homeTeam, "id");
+        cells[colIdx++] = getStringCell(homeTeam, "name");
+        cells[colIdx++] = getStringCell(homeTeam, "logo");
+        cells[colIdx++] = getBooleanCell(homeTeam, "winner");
+
+        cells[colIdx++] = getIntCell(awayTeam, "id");
+        cells[colIdx++] = getStringCell(awayTeam, "name");
+        cells[colIdx++] = getStringCell(awayTeam, "logo");
+        cells[colIdx++] = getBooleanCell(awayTeam, "winner");
+
+        // Goals (2 columns)
+        cells[colIdx++] = getIntCell(goals, "home");
+        cells[colIdx++] = getIntCell(goals, "away");
+
+        // Score Breakdown (8 columns)
+        JsonNode halftime = score != null ? score.get("halftime") : null;
+        JsonNode fulltime = score != null ? score.get("fulltime") : null;
+        JsonNode extratime = score != null ? score.get("extratime") : null;
+        JsonNode penalty = score != null ? score.get("penalty") : null;
+
+        cells[colIdx++] = getIntCell(halftime, "home");
+        cells[colIdx++] = getIntCell(halftime, "away");
+        cells[colIdx++] = getIntCell(fulltime, "home");
+        cells[colIdx++] = getIntCell(fulltime, "away");
+        cells[colIdx++] = getIntCell(extratime, "home");
+        cells[colIdx++] = getIntCell(extratime, "away");
+        cells[colIdx++] = getIntCell(penalty, "home");
+        cells[colIdx++] = getIntCell(penalty, "away");
+
+        // Events (18 columns - if enabled)
+        if (m_includeEvents.getBooleanValue()) {
+            EventsData eventsData = parseEvents(events);
+            cells[colIdx++] = new StringCell(eventsData.goalsHomeScorers);
+            cells[colIdx++] = new StringCell(eventsData.goalsHomeAssists);
+            cells[colIdx++] = new StringCell(eventsData.goalsHomeTimes);
+            cells[colIdx++] = new StringCell(eventsData.goalsAwayScorers);
+            cells[colIdx++] = new StringCell(eventsData.goalsAwayAssists);
+            cells[colIdx++] = new StringCell(eventsData.goalsAwayTimes);
+            cells[colIdx++] = new IntCell(eventsData.yellowCardsHome);
+            cells[colIdx++] = new StringCell(eventsData.yellowCardsHomePlayers);
+            cells[colIdx++] = new IntCell(eventsData.yellowCardsAway);
+            cells[colIdx++] = new StringCell(eventsData.yellowCardsAwayPlayers);
+            cells[colIdx++] = new IntCell(eventsData.redCardsHome);
+            cells[colIdx++] = new StringCell(eventsData.redCardsHomePlayers);
+            cells[colIdx++] = new IntCell(eventsData.redCardsAway);
+            cells[colIdx++] = new StringCell(eventsData.redCardsAwayPlayers);
+            cells[colIdx++] = new IntCell(eventsData.substitutionsHomeCount);
+            cells[colIdx++] = new StringCell(eventsData.substitutionsHomeDetails);
+            cells[colIdx++] = new IntCell(eventsData.substitutionsAwayCount);
+            cells[colIdx++] = new StringCell(eventsData.substitutionsAwayDetails);
+        }
+
+        // Statistics (32 columns - if enabled)
+        if (m_includeStatistics.getBooleanValue()) {
+            StatisticsData statsData = parseStatistics(statistics);
+            // Home team stats (16 columns)
+            cells[colIdx++] = new IntCell(statsData.homeShotsOnGoal);
+            cells[colIdx++] = new IntCell(statsData.homeShotsOffGoal);
+            cells[colIdx++] = new IntCell(statsData.homeTotalShots);
+            cells[colIdx++] = new IntCell(statsData.homeBlockedShots);
+            cells[colIdx++] = new IntCell(statsData.homeShotsInsideBox);
+            cells[colIdx++] = new IntCell(statsData.homeShotsOutsideBox);
+            cells[colIdx++] = new IntCell(statsData.homeFouls);
+            cells[colIdx++] = new IntCell(statsData.homeCornerKicks);
+            cells[colIdx++] = new IntCell(statsData.homeOffsides);
+            cells[colIdx++] = new StringCell(statsData.homeBallPossession);
+            cells[colIdx++] = new IntCell(statsData.homeYellowCards);
+            cells[colIdx++] = new IntCell(statsData.homeRedCards);
+            cells[colIdx++] = new IntCell(statsData.homeGoalkeeperSaves);
+            cells[colIdx++] = new IntCell(statsData.homeTotalPasses);
+            cells[colIdx++] = new IntCell(statsData.homePassesAccurate);
+            cells[colIdx++] = new StringCell(statsData.homePassesPercentage);
+            // Away team stats (16 columns)
+            cells[colIdx++] = new IntCell(statsData.awayShotsOnGoal);
+            cells[colIdx++] = new IntCell(statsData.awayShotsOffGoal);
+            cells[colIdx++] = new IntCell(statsData.awayTotalShots);
+            cells[colIdx++] = new IntCell(statsData.awayBlockedShots);
+            cells[colIdx++] = new IntCell(statsData.awayShotsInsideBox);
+            cells[colIdx++] = new IntCell(statsData.awayShotsOutsideBox);
+            cells[colIdx++] = new IntCell(statsData.awayFouls);
+            cells[colIdx++] = new IntCell(statsData.awayCornerKicks);
+            cells[colIdx++] = new IntCell(statsData.awayOffsides);
+            cells[colIdx++] = new StringCell(statsData.awayBallPossession);
+            cells[colIdx++] = new IntCell(statsData.awayYellowCards);
+            cells[colIdx++] = new IntCell(statsData.awayRedCards);
+            cells[colIdx++] = new IntCell(statsData.awayGoalkeeperSaves);
+            cells[colIdx++] = new IntCell(statsData.awayTotalPasses);
+            cells[colIdx++] = new IntCell(statsData.awayPassesAccurate);
+            cells[colIdx++] = new StringCell(statsData.awayPassesPercentage);
+        }
+
+        // Lineups (20 columns - if enabled)
+        if (m_includeLineups.getBooleanValue()) {
+            LineupsData lineupsData = parseLineups(lineups);
+            // Home team lineup (10 columns)
+            cells[colIdx++] = new StringCell(lineupsData.homeFormation);
+            cells[colIdx++] = new StringCell(lineupsData.homeStartingXIPlayers);
+            cells[colIdx++] = new StringCell(lineupsData.homeStartingXINumbers);
+            cells[colIdx++] = new StringCell(lineupsData.homeStartingXIPositions);
+            cells[colIdx++] = new StringCell(lineupsData.homeSubstitutesPlayers);
+            cells[colIdx++] = new StringCell(lineupsData.homeSubstitutesNumbers);
+            cells[colIdx++] = new StringCell(lineupsData.homeSubstitutesPositions);
+            cells[colIdx++] = new IntCell(lineupsData.homeCoachId);
+            cells[colIdx++] = new StringCell(lineupsData.homeCoachName);
+            cells[colIdx++] = new StringCell(lineupsData.homeCoachPhoto);
+            // Away team lineup (10 columns)
+            cells[colIdx++] = new StringCell(lineupsData.awayFormation);
+            cells[colIdx++] = new StringCell(lineupsData.awayStartingXIPlayers);
+            cells[colIdx++] = new StringCell(lineupsData.awayStartingXINumbers);
+            cells[colIdx++] = new StringCell(lineupsData.awayStartingXIPositions);
+            cells[colIdx++] = new StringCell(lineupsData.awaySubstitutesPlayers);
+            cells[colIdx++] = new StringCell(lineupsData.awaySubstitutesNumbers);
+            cells[colIdx++] = new StringCell(lineupsData.awaySubstitutesPositions);
+            cells[colIdx++] = new IntCell(lineupsData.awayCoachId);
+            cells[colIdx++] = new StringCell(lineupsData.awayCoachName);
+            cells[colIdx++] = new StringCell(lineupsData.awayCoachPhoto);
+        }
 
         return new DefaultRow(new RowKey("Row" + rowNum), cells);
     }
 
+    // Helper methods for safe data extraction
+    private DataCell getIntCell(JsonNode node, String field) {
+        if (node != null && node.has(field) && !node.get(field).isNull()) {
+            return new IntCell(node.get(field).asInt());
+        }
+        return DataType.getMissingCell();
+    }
+
+    private DataCell getLongCell(JsonNode node, String field) {
+        if (node != null && node.has(field) && !node.get(field).isNull()) {
+            return new LongCell(node.get(field).asLong());
+        }
+        return DataType.getMissingCell();
+    }
+
+    private DataCell getStringCell(JsonNode node, String field) {
+        if (node != null && node.has(field) && !node.get(field).isNull()) {
+            return new StringCell(node.get(field).asText());
+        }
+        return DataType.getMissingCell();
+    }
+
+    private DataCell getBooleanCell(JsonNode node, String field) {
+        if (node != null && node.has(field) && !node.get(field).isNull()) {
+            return BooleanCell.get(node.get(field).asBoolean());
+        }
+        return DataType.getMissingCell();
+    }
+
+    // Data classes for structured parsing
+    private static class EventsData {
+        String goalsHomeScorers = "";
+        String goalsHomeAssists = "";
+        String goalsHomeTimes = "";
+        String goalsAwayScorers = "";
+        String goalsAwayAssists = "";
+        String goalsAwayTimes = "";
+        int yellowCardsHome = 0;
+        String yellowCardsHomePlayers = "";
+        int yellowCardsAway = 0;
+        String yellowCardsAwayPlayers = "";
+        int redCardsHome = 0;
+        String redCardsHomePlayers = "";
+        int redCardsAway = 0;
+        String redCardsAwayPlayers = "";
+        int substitutionsHomeCount = 0;
+        String substitutionsHomeDetails = "";
+        int substitutionsAwayCount = 0;
+        String substitutionsAwayDetails = "";
+    }
+
+    private static class StatisticsData {
+        int homeShotsOnGoal = 0, homeShotsOffGoal = 0, homeTotalShots = 0, homeBlockedShots = 0;
+        int homeShotsInsideBox = 0, homeShotsOutsideBox = 0, homeFouls = 0, homeCornerKicks = 0;
+        int homeOffsides = 0, homeYellowCards = 0, homeRedCards = 0, homeGoalkeeperSaves = 0;
+        int homeTotalPasses = 0, homePassesAccurate = 0;
+        String homeBallPossession = "", homePassesPercentage = "";
+        int awayShotsOnGoal = 0, awayShotsOffGoal = 0, awayTotalShots = 0, awayBlockedShots = 0;
+        int awayShotsInsideBox = 0, awayShotsOutsideBox = 0, awayFouls = 0, awayCornerKicks = 0;
+        int awayOffsides = 0, awayYellowCards = 0, awayRedCards = 0, awayGoalkeeperSaves = 0;
+        int awayTotalPasses = 0, awayPassesAccurate = 0;
+        String awayBallPossession = "", awayPassesPercentage = "";
+    }
+
+    private static class LineupsData {
+        String homeFormation = "", homeStartingXIPlayers = "", homeStartingXINumbers = "";
+        String homeStartingXIPositions = "", homeSubstitutesPlayers = "", homeSubstitutesNumbers = "";
+        String homeSubstitutesPositions = "", homeCoachName = "", homeCoachPhoto = "";
+        int homeCoachId = 0;
+        String awayFormation = "", awayStartingXIPlayers = "", awayStartingXINumbers = "";
+        String awayStartingXIPositions = "", awaySubstitutesPlayers = "", awaySubstitutesNumbers = "";
+        String awaySubstitutesPositions = "", awayCoachName = "", awayCoachPhoto = "";
+        int awayCoachId = 0;
+    }
+
+    /**
+     * Parse events data from the API response.
+     */
+    private EventsData parseEvents(JsonNode events) {
+        EventsData data = new EventsData();
+        if (events == null || !events.isArray()) return data;
+
+        StringBuilder homeGoals = new StringBuilder(), homeAssists = new StringBuilder(), homeTimes = new StringBuilder();
+        StringBuilder awayGoals = new StringBuilder(), awayAssists = new StringBuilder(), awayTimes = new StringBuilder();
+        StringBuilder homeYellow = new StringBuilder(), awayYellow = new StringBuilder();
+        StringBuilder homeRed = new StringBuilder(), awayRed = new StringBuilder();
+        StringBuilder homeSubs = new StringBuilder(), awaySubs = new StringBuilder();
+
+        // Track team IDs to determine home vs away
+        Integer homeTeamId = null, awayTeamId = null;
+
+        for (JsonNode event : events) {
+            String type = event.has("type") ? event.get("type").asText() : "";
+            String detail = event.has("detail") ? event.get("detail").asText() : "";
+            JsonNode team = event.get("team");
+            int teamId = team != null && team.has("id") ? team.get("id").asInt() : 0;
+
+            // Determine home/away based on order (first team is typically home)
+            if (homeTeamId == null) homeTeamId = teamId;
+            else if (awayTeamId == null && teamId != homeTeamId) awayTeamId = teamId;
+
+            boolean isHome = teamId == homeTeamId;
+
+            if ("Goal".equals(type)) {
+                JsonNode player = event.get("player");
+                JsonNode assist = event.get("assist");
+                JsonNode time = event.get("time");
+                String playerName = player != null && player.has("name") ? player.get("name").asText() : "Unknown";
+                String assistName = assist != null && assist.has("name") ? assist.get("name").asText() : "";
+                int minute = time != null && time.has("elapsed") ? time.get("elapsed").asInt() : 0;
+
+                if (isHome) {
+                    if (homeGoals.length() > 0) homeGoals.append(", ");
+                    homeGoals.append(playerName).append(" (").append(minute).append("')");
+                    if (homeAssists.length() > 0) homeAssists.append(", ");
+                    homeAssists.append(assistName.isEmpty() ? "-" : assistName);
+                    if (homeTimes.length() > 0) homeTimes.append(", ");
+                    homeTimes.append(minute);
+                } else {
+                    if (awayGoals.length() > 0) awayGoals.append(", ");
+                    awayGoals.append(playerName).append(" (").append(minute).append("')");
+                    if (awayAssists.length() > 0) awayAssists.append(", ");
+                    awayAssists.append(assistName.isEmpty() ? "-" : assistName);
+                    if (awayTimes.length() > 0) awayTimes.append(", ");
+                    awayTimes.append(minute);
+                }
+            } else if ("Card".equals(type)) {
+                JsonNode player = event.get("player");
+                String playerName = player != null && player.has("name") ? player.get("name").asText() : "Unknown";
+
+                if ("Yellow Card".equals(detail)) {
+                    if (isHome) {
+                        data.yellowCardsHome++;
+                        if (homeYellow.length() > 0) homeYellow.append(", ");
+                        homeYellow.append(playerName);
+                    } else {
+                        data.yellowCardsAway++;
+                        if (awayYellow.length() > 0) awayYellow.append(", ");
+                        awayYellow.append(playerName);
+                    }
+                } else if ("Red Card".equals(detail)) {
+                    if (isHome) {
+                        data.redCardsHome++;
+                        if (homeRed.length() > 0) homeRed.append(", ");
+                        homeRed.append(playerName);
+                    } else {
+                        data.redCardsAway++;
+                        if (awayRed.length() > 0) awayRed.append(", ");
+                        awayRed.append(playerName);
+                    }
+                }
+            } else if ("subst".equals(type)) {
+                JsonNode player = event.get("player");
+                JsonNode assist = event.get("assist");  // Player coming in
+                JsonNode time = event.get("time");
+                String playerOut = player != null && player.has("name") ? player.get("name").asText() : "?";
+                String playerIn = assist != null && assist.has("name") ? assist.get("name").asText() : "?";
+                int minute = time != null && time.has("elapsed") ? time.get("elapsed").asInt() : 0;
+
+                String subDetail = playerOut + "→" + playerIn + " (" + minute + "')";
+                if (isHome) {
+                    data.substitutionsHomeCount++;
+                    if (homeSubs.length() > 0) homeSubs.append(", ");
+                    homeSubs.append(subDetail);
+                } else {
+                    data.substitutionsAwayCount++;
+                    if (awaySubs.length() > 0) awaySubs.append(", ");
+                    awaySubs.append(subDetail);
+                }
+            }
+        }
+
+        data.goalsHomeScorers = homeGoals.toString();
+        data.goalsHomeAssists = homeAssists.toString();
+        data.goalsHomeTimes = homeTimes.toString();
+        data.goalsAwayScorers = awayGoals.toString();
+        data.goalsAwayAssists = awayAssists.toString();
+        data.goalsAwayTimes = awayTimes.toString();
+        data.yellowCardsHomePlayers = homeYellow.toString();
+        data.yellowCardsAwayPlayers = awayYellow.toString();
+        data.redCardsHomePlayers = homeRed.toString();
+        data.redCardsAwayPlayers = awayRed.toString();
+        data.substitutionsHomeDetails = homeSubs.toString();
+        data.substitutionsAwayDetails = awaySubs.toString();
+
+        return data;
+    }
+
+    /**
+     * Parse statistics data from the API response.
+     */
+    private StatisticsData parseStatistics(JsonNode statistics) {
+        StatisticsData data = new StatisticsData();
+        if (statistics == null || !statistics.isArray()) return data;
+
+        // Statistics response is an array with 2 elements (home and away teams)
+        for (int i = 0; i < statistics.size(); i++) {
+            JsonNode teamStats = statistics.get(i);
+            JsonNode statsArray = teamStats.get("statistics");
+            boolean isHome = i == 0;  // First team is home
+
+            if (statsArray != null && statsArray.isArray()) {
+                for (JsonNode stat : statsArray) {
+                    String type = stat.has("type") ? stat.get("type").asText() : "";
+                    JsonNode valueNode = stat.get("value");
+
+                    if (valueNode == null || valueNode.isNull()) continue;
+
+                    if (isHome) {
+                        parseStatValue(type, valueNode, data, true);
+                    } else {
+                        parseStatValue(type, valueNode, data, false);
+                    }
+                }
+            }
+        }
+
+        return data;
+    }
+
+    private void parseStatValue(String type, JsonNode valueNode, StatisticsData data, boolean isHome) {
+        String value = valueNode.isTextual() ? valueNode.asText() : String.valueOf(valueNode.asInt());
+        int intValue = 0;
+        try {
+            intValue = Integer.parseInt(value.replace("%", "").trim());
+        } catch (NumberFormatException e) {
+            // Keep as 0
+        }
+
+        if (isHome) {
+            switch (type) {
+                case "Shots on Goal": data.homeShotsOnGoal = intValue; break;
+                case "Shots off Goal": data.homeShotsOffGoal = intValue; break;
+                case "Total Shots": data.homeTotalShots = intValue; break;
+                case "Blocked Shots": data.homeBlockedShots = intValue; break;
+                case "Shots insidebox": data.homeShotsInsideBox = intValue; break;
+                case "Shots outsidebox": data.homeShotsOutsideBox = intValue; break;
+                case "Fouls": data.homeFouls = intValue; break;
+                case "Corner Kicks": data.homeCornerKicks = intValue; break;
+                case "Offsides": data.homeOffsides = intValue; break;
+                case "Ball Possession": data.homeBallPossession = value; break;
+                case "Yellow Cards": data.homeYellowCards = intValue; break;
+                case "Red Cards": data.homeRedCards = intValue; break;
+                case "Goalkeeper Saves": data.homeGoalkeeperSaves = intValue; break;
+                case "Total passes": data.homeTotalPasses = intValue; break;
+                case "Passes accurate": data.homePassesAccurate = intValue; break;
+                case "Passes %": data.homePassesPercentage = value; break;
+            }
+        } else {
+            switch (type) {
+                case "Shots on Goal": data.awayShotsOnGoal = intValue; break;
+                case "Shots off Goal": data.awayShotsOffGoal = intValue; break;
+                case "Total Shots": data.awayTotalShots = intValue; break;
+                case "Blocked Shots": data.awayBlockedShots = intValue; break;
+                case "Shots insidebox": data.awayShotsInsideBox = intValue; break;
+                case "Shots outsidebox": data.awayShotsOutsideBox = intValue; break;
+                case "Fouls": data.awayFouls = intValue; break;
+                case "Corner Kicks": data.awayCornerKicks = intValue; break;
+                case "Offsides": data.awayOffsides = intValue; break;
+                case "Ball Possession": data.awayBallPossession = value; break;
+                case "Yellow Cards": data.awayYellowCards = intValue; break;
+                case "Red Cards": data.awayRedCards = intValue; break;
+                case "Goalkeeper Saves": data.awayGoalkeeperSaves = intValue; break;
+                case "Total passes": data.awayTotalPasses = intValue; break;
+                case "Passes accurate": data.awayPassesAccurate = intValue; break;
+                case "Passes %": data.awayPassesPercentage = value; break;
+            }
+        }
+    }
+
+    /**
+     * Parse lineups data from the API response.
+     */
+    private LineupsData parseLineups(JsonNode lineups) {
+        LineupsData data = new LineupsData();
+        if (lineups == null || !lineups.isArray()) return data;
+
+        for (int i = 0; i < lineups.size(); i++) {
+            JsonNode teamLineup = lineups.get(i);
+            boolean isHome = i == 0;  // First team is home
+
+            String formation = teamLineup.has("formation") ? teamLineup.get("formation").asText() : "";
+
+            StringBuilder startPlayers = new StringBuilder(), startNumbers = new StringBuilder(), startPos = new StringBuilder();
+            StringBuilder subPlayers = new StringBuilder(), subNumbers = new StringBuilder(), subPos = new StringBuilder();
+
+            JsonNode startXI = teamLineup.get("startXI");
+            if (startXI != null && startXI.isArray()) {
+                for (JsonNode playerNode : startXI) {
+                    JsonNode player = playerNode.get("player");
+                    if (player != null) {
+                        if (startPlayers.length() > 0) startPlayers.append(", ");
+                        startPlayers.append(player.has("name") ? player.get("name").asText() : "");
+                        if (startNumbers.length() > 0) startNumbers.append(", ");
+                        startNumbers.append(player.has("number") ? player.get("number").asInt() : 0);
+                        if (startPos.length() > 0) startPos.append(", ");
+                        startPos.append(player.has("pos") ? player.get("pos").asText() : "");
+                    }
+                }
+            }
+
+            JsonNode substitutes = teamLineup.get("substitutes");
+            if (substitutes != null && substitutes.isArray()) {
+                for (JsonNode playerNode : substitutes) {
+                    JsonNode player = playerNode.get("player");
+                    if (player != null) {
+                        if (subPlayers.length() > 0) subPlayers.append(", ");
+                        subPlayers.append(player.has("name") ? player.get("name").asText() : "");
+                        if (subNumbers.length() > 0) subNumbers.append(", ");
+                        subNumbers.append(player.has("number") ? player.get("number").asInt() : 0);
+                        if (subPos.length() > 0) subPos.append(", ");
+                        subPos.append(player.has("pos") ? player.get("pos").asText() : "");
+                    }
+                }
+            }
+
+            JsonNode coach = teamLineup.get("coach");
+            int coachId = 0;
+            String coachName = "", coachPhoto = "";
+            if (coach != null) {
+                coachId = coach.has("id") ? coach.get("id").asInt() : 0;
+                coachName = coach.has("name") ? coach.get("name").asText() : "";
+                coachPhoto = coach.has("photo") ? coach.get("photo").asText() : "";
+            }
+
+            if (isHome) {
+                data.homeFormation = formation;
+                data.homeStartingXIPlayers = startPlayers.toString();
+                data.homeStartingXINumbers = startNumbers.toString();
+                data.homeStartingXIPositions = startPos.toString();
+                data.homeSubstitutesPlayers = subPlayers.toString();
+                data.homeSubstitutesNumbers = subNumbers.toString();
+                data.homeSubstitutesPositions = subPos.toString();
+                data.homeCoachId = coachId;
+                data.homeCoachName = coachName;
+                data.homeCoachPhoto = coachPhoto;
+            } else {
+                data.awayFormation = formation;
+                data.awayStartingXIPlayers = startPlayers.toString();
+                data.awayStartingXINumbers = startNumbers.toString();
+                data.awayStartingXIPositions = startPos.toString();
+                data.awaySubstitutesPlayers = subPlayers.toString();
+                data.awaySubstitutesNumbers = subNumbers.toString();
+                data.awaySubstitutesPositions = subPos.toString();
+                data.awayCoachId = coachId;
+                data.awayCoachName = coachName;
+                data.awayCoachPhoto = coachPhoto;
+            }
+        }
+
+        return data;
+    }
+
     @Override
     protected DataTableSpec getOutputSpec() {
-        return new DataTableSpec(
-            new DataColumnSpecCreator("Fixture_ID", IntCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Date", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Status", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("League_ID", IntCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("League_Name", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Season", IntCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Round", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Home_Team_ID", IntCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Home_Team", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Away_Team_ID", IntCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Away_Team", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Home_Goals", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Away_Goals", StringCell.TYPE).createSpec(),
-            new DataColumnSpecCreator("Venue", StringCell.TYPE).createSpec()
-        );
+        java.util.List<DataColumnSpec> columns = new java.util.ArrayList<>();
+
+        // Base Fixture Information (14 columns)
+        columns.add(new DataColumnSpecCreator("Fixture_ID", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Referee", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Timezone", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Date", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Timestamp", LongCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Period_First", LongCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Period_Second", LongCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Venue_ID", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Venue_Name", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Venue_City", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Status_Long", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Status_Short", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Status_Elapsed", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Status_Extra", IntCell.TYPE).createSpec());
+
+        // League Information (7 columns)
+        columns.add(new DataColumnSpecCreator("League_ID", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("League_Name", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("League_Country", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("League_Logo", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("League_Flag", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Season", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Round", StringCell.TYPE).createSpec());
+
+        // Teams Information (8 columns)
+        columns.add(new DataColumnSpecCreator("Home_Team_ID", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Home_Team_Name", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Home_Team_Logo", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Home_Team_Winner", BooleanCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Away_Team_ID", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Away_Team_Name", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Away_Team_Logo", StringCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Away_Team_Winner", BooleanCell.TYPE).createSpec());
+
+        // Goals (2 columns)
+        columns.add(new DataColumnSpecCreator("Goals_Home", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Goals_Away", IntCell.TYPE).createSpec());
+
+        // Score Breakdown (8 columns) = 40 base columns total
+        columns.add(new DataColumnSpecCreator("Halftime_Home", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Halftime_Away", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Fulltime_Home", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Fulltime_Away", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Extratime_Home", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Extratime_Away", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Penalty_Home", IntCell.TYPE).createSpec());
+        columns.add(new DataColumnSpecCreator("Penalty_Away", IntCell.TYPE).createSpec());
+
+        // Events columns (18 - if enabled)
+        if (m_includeEvents.getBooleanValue()) {
+            columns.add(new DataColumnSpecCreator("Goals_Home_Scorers", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Goals_Home_Assists", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Goals_Home_Times", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Goals_Away_Scorers", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Goals_Away_Assists", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Goals_Away_Times", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Yellow_Cards_Home", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Yellow_Cards_Home_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Yellow_Cards_Away", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Yellow_Cards_Away_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Red_Cards_Home", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Red_Cards_Home_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Red_Cards_Away", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Red_Cards_Away_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Substitutions_Home_Count", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Substitutions_Home_Details", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Substitutions_Away_Count", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Substitutions_Away_Details", StringCell.TYPE).createSpec());
+        }
+
+        // Statistics columns (32 - if enabled)
+        if (m_includeStatistics.getBooleanValue()) {
+            // Home team stats (16)
+            columns.add(new DataColumnSpecCreator("Stat_Home_Shots_On_Goal", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Shots_Off_Goal", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Total_Shots", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Blocked_Shots", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Shots_Inside_Box", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Shots_Outside_Box", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Fouls", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Corner_Kicks", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Offsides", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Ball_Possession", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Yellow_Cards", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Red_Cards", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Goalkeeper_Saves", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Total_Passes", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Passes_Accurate", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Home_Passes_Percentage", StringCell.TYPE).createSpec());
+            // Away team stats (16)
+            columns.add(new DataColumnSpecCreator("Stat_Away_Shots_On_Goal", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Shots_Off_Goal", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Total_Shots", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Blocked_Shots", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Shots_Inside_Box", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Shots_Outside_Box", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Fouls", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Corner_Kicks", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Offsides", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Ball_Possession", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Yellow_Cards", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Red_Cards", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Goalkeeper_Saves", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Total_Passes", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Passes_Accurate", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Stat_Away_Passes_Percentage", StringCell.TYPE).createSpec());
+        }
+
+        // Lineups columns (20 - if enabled)
+        if (m_includeLineups.getBooleanValue()) {
+            // Home team lineup (10)
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Formation", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Starting_XI_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Starting_XI_Numbers", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Starting_XI_Positions", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Substitutes_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Substitutes_Numbers", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Substitutes_Positions", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Coach_ID", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Coach_Name", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Home_Coach_Photo", StringCell.TYPE).createSpec());
+            // Away team lineup (10)
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Formation", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Starting_XI_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Starting_XI_Numbers", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Starting_XI_Positions", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Substitutes_Players", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Substitutes_Numbers", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Substitutes_Positions", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Coach_ID", IntCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Coach_Name", StringCell.TYPE).createSpec());
+            columns.add(new DataColumnSpecCreator("Lineup_Away_Coach_Photo", StringCell.TYPE).createSpec());
+        }
+
+        return new DataTableSpec(columns.toArray(new DataColumnSpec[0]));
     }
 
     @Override
