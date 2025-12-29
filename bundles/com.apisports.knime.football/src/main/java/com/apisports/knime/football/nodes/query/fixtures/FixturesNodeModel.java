@@ -222,6 +222,12 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         int rowNum = 0;
         int fixtureCount = 0;
         int totalFixtures = fixtureIds.size();
+        int fixturesSkipped = 0;
+        int fixturesWithErrors = 0;
+        int eventsErrors = 0;
+        int statisticsErrors = 0;
+        int lineupsErrors = 0;
+        int playersErrors = 0;
 
         // Temporarily override settings for ID-based queries
         String originalQueryType = m_queryType.getStringValue();
@@ -251,6 +257,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                             JsonNode statistics = null;
                             JsonNode lineups = null;
                             JsonNode players = null;
+                            boolean hasError = false;
 
                             // Extract team IDs for additional queries
                             JsonNode teams = fixtureItem.get("teams");
@@ -259,52 +266,81 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                             int awayTeamId = teams != null && teams.has("away") && teams.get("away").has("id")
                                 ? teams.get("away").get("id").asInt() : 0;
 
-                            // Fetch additional data if requested (same logic as parseFixturesResponse)
+                            // Fetch additional data if requested - wrap each in try-catch to continue on errors
                             if (m_includeEvents.getBooleanValue()) {
-                                events = callApi(client, "/fixtures/events",
-                                               Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                                try {
+                                    events = callApi(client, "/fixtures/events",
+                                                   Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                                } catch (Exception e) {
+                                    getLogger().warn("Failed to fetch events for fixture " + fixtureId + ": " + e.getMessage());
+                                    eventsErrors++;
+                                    hasError = true;
+                                }
                             }
 
                             if (m_includeStatistics.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
-                                JsonNode homeStats = callApi(client, "/fixtures/statistics",
-                                                   Map.of("fixture", String.valueOf(fixtureId),
-                                                         "team", String.valueOf(homeTeamId)), mapper);
-                                JsonNode awayStats = callApi(client, "/fixtures/statistics",
-                                                   Map.of("fixture", String.valueOf(fixtureId),
-                                                         "team", String.valueOf(awayTeamId)), mapper);
+                                try {
+                                    JsonNode homeStats = callApi(client, "/fixtures/statistics",
+                                                       Map.of("fixture", String.valueOf(fixtureId),
+                                                             "team", String.valueOf(homeTeamId)), mapper);
+                                    JsonNode awayStats = callApi(client, "/fixtures/statistics",
+                                                       Map.of("fixture", String.valueOf(fixtureId),
+                                                             "team", String.valueOf(awayTeamId)), mapper);
 
-                                statistics = mapper.createArrayNode();
-                                if (homeStats != null && homeStats.isArray() && homeStats.size() > 0) {
-                                    ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(homeStats.get(0));
-                                }
-                                if (awayStats != null && awayStats.isArray() && awayStats.size() > 0) {
-                                    ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(awayStats.get(0));
+                                    statistics = mapper.createArrayNode();
+                                    if (homeStats != null && homeStats.isArray() && homeStats.size() > 0) {
+                                        ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(homeStats.get(0));
+                                    }
+                                    if (awayStats != null && awayStats.isArray() && awayStats.size() > 0) {
+                                        ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(awayStats.get(0));
+                                    }
+                                } catch (Exception e) {
+                                    getLogger().warn("Failed to fetch statistics for fixture " + fixtureId + ": " + e.getMessage());
+                                    statisticsErrors++;
+                                    hasError = true;
                                 }
                             }
 
                             if (m_includeLineups.getBooleanValue()) {
-                                lineups = callApi(client, "/fixtures/lineups",
-                                                Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                                try {
+                                    lineups = callApi(client, "/fixtures/lineups",
+                                                    Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                                } catch (Exception e) {
+                                    getLogger().warn("Failed to fetch lineups for fixture " + fixtureId + ": " + e.getMessage());
+                                    lineupsErrors++;
+                                    hasError = true;
+                                }
                             }
 
                             if (m_includePlayerStats.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
-                                JsonNode homePlayers = callApi(client, "/fixtures/players",
-                                                Map.of("fixture", String.valueOf(fixtureId),
-                                                      "team", String.valueOf(homeTeamId)), mapper);
-                                JsonNode awayPlayers = callApi(client, "/fixtures/players",
-                                                Map.of("fixture", String.valueOf(fixtureId),
-                                                      "team", String.valueOf(awayTeamId)), mapper);
+                                try {
+                                    JsonNode homePlayers = callApi(client, "/fixtures/players",
+                                                    Map.of("fixture", String.valueOf(fixtureId),
+                                                          "team", String.valueOf(homeTeamId)), mapper);
+                                    JsonNode awayPlayers = callApi(client, "/fixtures/players",
+                                                    Map.of("fixture", String.valueOf(fixtureId),
+                                                          "team", String.valueOf(awayTeamId)), mapper);
 
-                                players = mapper.createArrayNode();
-                                if (homePlayers != null && homePlayers.isArray() && homePlayers.size() > 0) {
-                                    ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(homePlayers.get(0));
-                                }
-                                if (awayPlayers != null && awayPlayers.isArray() && awayPlayers.size() > 0) {
-                                    ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(awayPlayers.get(0));
+                                    players = mapper.createArrayNode();
+                                    if (homePlayers != null && homePlayers.isArray() && homePlayers.size() > 0) {
+                                        ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(homePlayers.get(0));
+                                    }
+                                    if (awayPlayers != null && awayPlayers.isArray() && awayPlayers.size() > 0) {
+                                        ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(awayPlayers.get(0));
+                                    }
+                                } catch (Exception e) {
+                                    getLogger().warn("Failed to fetch player stats for fixture " + fixtureId + ": " + e.getMessage());
+                                    playersErrors++;
+                                    hasError = true;
                                 }
                             }
 
-                            // Parse the row with all data
+                            // Track fixtures that had any errors with optional data
+                            if (hasError) {
+                                fixturesWithErrors++;
+                            }
+
+                            // Parse the row with all data (null for any that failed)
                             DataRow row = parseFixtureRow(fixtureItem, events, statistics, lineups, players, rowNum);
                             container.addRowToTable(row);
                             rowNum++;
@@ -312,6 +348,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                     }
                 } catch (Exception e) {
                     getLogger().warn("Failed to get details for fixture " + fixtureId + ": " + e.getMessage());
+                    fixturesSkipped++;
                 }
 
                 fixtureCount++;
@@ -323,7 +360,37 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         }
 
         container.close();
-        getLogger().info("Retrieved detailed data for " + rowNum + " fixtures");
+
+        // Log summary with error information
+        StringBuilder summary = new StringBuilder();
+        summary.append("Retrieved detailed data for ").append(rowNum).append(" of ").append(totalFixtures).append(" fixtures");
+        if (fixturesSkipped > 0) {
+            summary.append(" (").append(fixturesSkipped).append(" skipped due to errors)");
+        }
+        if (fixturesWithErrors > 0) {
+            summary.append(" (").append(fixturesWithErrors).append(" with partial data)");
+        }
+        getLogger().info(summary.toString());
+
+        // Set warning message if there were errors
+        if (fixturesSkipped > 0 || eventsErrors > 0 || statisticsErrors > 0 || lineupsErrors > 0 || playersErrors > 0) {
+            StringBuilder warning = new StringBuilder();
+            if (fixturesSkipped > 0) {
+                warning.append(fixturesSkipped).append(" fixture(s) skipped. ");
+            }
+            if (eventsErrors > 0 || statisticsErrors > 0 || lineupsErrors > 0 || playersErrors > 0) {
+                warning.append("Optional data errors: ");
+                if (eventsErrors > 0) warning.append(eventsErrors).append(" events, ");
+                if (statisticsErrors > 0) warning.append(statisticsErrors).append(" statistics, ");
+                if (lineupsErrors > 0) warning.append(lineupsErrors).append(" lineups, ");
+                if (playersErrors > 0) warning.append(playersErrors).append(" player stats, ");
+                warning.setLength(warning.length() - 2); // Remove trailing ", "
+                warning.append(". ");
+            }
+            warning.append("Check console for details.");
+            setWarningMessage(warning.toString());
+        }
+
         return container.getTable();
     }
 
