@@ -111,7 +111,8 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         if (inSpecs.length > 2 && inSpecs[2] != null) {
             // Optional port IS connected - will use input fixture IDs at execution
             // No need to validate dialog settings
-            getLogger().info("Fixture IDs input detected - will use input data, ignoring dialog settings");
+            setWarningMessage("Using Fixture IDs from input port - dialog settings will be ignored");
+            getLogger().info("CONFIGURE: Fixture IDs input detected - will use input data, ignoring dialog settings");
 
             // Verify the input is a DataTableSpec with Fixture_ID column
             if (inSpecs[2] instanceof DataTableSpec) {
@@ -121,12 +122,15 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                     throw new InvalidSettingsException(
                         "Input table must contain a 'Fixture_ID' column");
                 }
+                getLogger().info("CONFIGURE: Found Fixture_ID column in input at index " + fixtureIdCol);
             }
 
             // Return output spec (dynamic based on include settings)
             return new PortObjectSpec[]{getOutputSpec()};
         } else {
             // Optional port NOT connected - validate dialog settings
+            getLogger().info("CONFIGURE: No input port connected, validating dialog settings");
+            setWarningMessage(null); // Clear any previous warning
             validateExecutionSettings();
             return new PortObjectSpec[]{getOutputSpec()};
         }
