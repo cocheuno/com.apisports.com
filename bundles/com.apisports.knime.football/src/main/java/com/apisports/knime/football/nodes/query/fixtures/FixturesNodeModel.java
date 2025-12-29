@@ -410,7 +410,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         JsonNode score = fixtureItem.get("score");
 
         // Calculate total column count based on enabled options
-        int totalColumns = 40;  // Base columns
+        int totalColumns = 39;  // Base columns (14 fixture + 7 league + 8 teams + 2 goals + 8 score)
         if (m_includeEvents.getBooleanValue()) totalColumns += 18;
         if (m_includeStatistics.getBooleanValue()) totalColumns += 32;
         if (m_includeLineups.getBooleanValue()) totalColumns += 20;
@@ -1215,7 +1215,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         columns.add(new DataColumnSpecCreator("Goals_Home", IntCell.TYPE).createSpec());
         columns.add(new DataColumnSpecCreator("Goals_Away", IntCell.TYPE).createSpec());
 
-        // Score Breakdown (8 columns) = 40 base columns total
+        // Score Breakdown (8 columns) = 39 base columns total
         columns.add(new DataColumnSpecCreator("Halftime_Home", IntCell.TYPE).createSpec());
         columns.add(new DataColumnSpecCreator("Halftime_Away", IntCell.TYPE).createSpec());
         columns.add(new DataColumnSpecCreator("Fulltime_Home", IntCell.TYPE).createSpec());
