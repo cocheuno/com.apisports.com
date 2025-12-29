@@ -138,6 +138,9 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        setWarningMessage("EXECUTE: Starting execution, checking for input port...");
+        getLogger().error("EXECUTE: Starting execution, inObjects.length = " + inObjects.length);
+
         // Get API client from connection port
         ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
         ApiSportsHttpClient client = connectionPort.getClient();
@@ -152,8 +155,14 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         // Check if optional fixture IDs port is connected
         BufferedDataTable fixtureIdsTable = null;
         if (inObjects.length > 2 && inObjects[2] != null) {
+            getLogger().error("EXECUTE: Port 2 is CONNECTED and NOT NULL!");
             fixtureIdsTable = (BufferedDataTable) inObjects[2];
-            getLogger().info("Fixture IDs input port connected - using " + fixtureIdsTable.size() + " fixture IDs");
+            getLogger().error("EXECUTE: Fixture IDs input contains " + fixtureIdsTable.size() + " fixture IDs");
+            setWarningMessage("EXECUTE: Using " + fixtureIdsTable.size() + " Fixture IDs from input port");
+        } else {
+            getLogger().error("EXECUTE: Port 2 NOT connected. inObjects.length=" + inObjects.length +
+                            ", port2=" + (inObjects.length > 2 ? (inObjects[2] == null ? "null" : "not-null") : "N/A"));
+            setWarningMessage("EXECUTE: No input port - using dialog settings");
         }
 
         // If fixture IDs provided via input port, override query type to use those IDs
