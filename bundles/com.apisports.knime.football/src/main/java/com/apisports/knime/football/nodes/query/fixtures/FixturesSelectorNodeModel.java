@@ -250,8 +250,10 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
 
     /**
      * Parse a single fixture JSON object into a DataRow with BASIC info only.
-     * Returns: Fixture_ID, Date, Home_Team_ID, Home_Team_Name, Away_Team_ID, Away_Team_Name,
-     *          League_ID, League_Name, Season, Round, Status, Venue_Name
+     * Returns: Fixture_ID, Date, Timestamp, Venue_Name, Status,
+     *          League_ID, League_Name, Season, Round,
+     *          Home_Team_ID, Home_Team_Name, Away_Team_ID, Away_Team_Name,
+     *          Goals_Home, Goals_Away
      */
     private DataRow parseBasicFixtureRow(JsonNode fixtureItem, int rowNum) {
         JsonNode fixture = fixtureItem.get("fixture");
@@ -259,8 +261,8 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
         JsonNode teams = fixtureItem.get("teams");
         JsonNode goals = fixtureItem.get("goals");
 
-        // 14 basic columns
-        DataCell[] cells = new DataCell[14];
+        // 15 basic columns
+        DataCell[] cells = new DataCell[15];
         int colIdx = 0;
 
         // Fixture info

@@ -13,13 +13,25 @@
     <fullDescription>
         <intro>
             <p>
-            Queries player data and statistics from the Football API. Supports multiple query
-            types including top scorers, top assists, most carded players, player search by
-            name, and detailed stats for specific players.
+            Queries player data and statistics from the Football API. This node can work
+            in two modes:
+            </p>
+            <ul>
+                <li><b>Standalone mode:</b> Uses dialog settings to query players by various criteria
+                    (top scorers, search by name, etc.)</li>
+                <li><b>Details mode:</b> Connects to Players Selector output to retrieve detailed
+                    season statistics for specific players.</li>
+            </ul>
+            <p>
+            In Details mode, the third optional input port accepts a table with a Player_ID column
+            (typically from Players Selector). This allows you to browse/filter players first,
+            then retrieve detailed season statistics for only the selected players.
             </p>
             <p>
-            Results include player biographical information (name, age, nationality) and
-            statistics (appearances, goals, assists, cards, rating).
+            Supports multiple query types including top scorers, top assists, most carded players,
+            player search by name, and detailed stats for specific players. Results include player
+            biographical information (name, age, nationality) and season statistics (appearances,
+            goals, assists, cards, rating).
             </p>
         </intro>
 
@@ -59,10 +71,16 @@
         <inPort index="1" name="Reference Data">
             Reference data (leagues, seasons) from the Reference Data Loader node
         </inPort>
+        <inPort index="2" name="Player IDs (Optional)">
+            Optional input table containing a Player_ID column. When connected, the node retrieves
+            detailed season statistics for the specified players, ignoring dialog query settings.
+            This is typically used with output from Players Selector node after filtering.
+        </inPort>
         <outPort index="0" name="Players">
-            Table containing player data with columns: Player_ID, Name, Firstname, Lastname,
+            Table containing player data with 14 columns: Player_ID, Name, Firstname, Lastname,
             Nationality, Age, Team, Position, Appearances, Goals, Assists, Yellow_Cards,
-            Red_Cards, Rating
+            Red_Cards, Rating. When input port is connected, retrieves detailed season statistics
+            for the specified Player IDs.
         </outPort>
     </ports>
 </knimeNode>
