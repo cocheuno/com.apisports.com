@@ -387,7 +387,9 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                     container.addRowToTable(row);
                     rowNum++;
                 } catch (Exception e) {
-                    getLogger().warn("Failed to parse fixture row: " + e.getMessage());
+                    getLogger().error("DIAGNOSTIC: Failed to parse fixture row " + rowNum + ": " + e.getMessage(), e);
+                    // Also print full stack trace to console
+                    e.printStackTrace();
                 }
             }
         }
