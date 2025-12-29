@@ -2,6 +2,8 @@ package com.apisports.knime.football.nodes.query.players;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeModel;
+import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDataPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.DataCell;
@@ -20,13 +22,23 @@ import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * NodeModel for Players query node.
  * Queries player data and statistics from the Football API.
+ *
+ * This node can work in two modes:
+ * 1. Standalone: Uses dialog settings to query players
+ * 2. Details mode: Accepts optional input table with Player_ID column
+ *    and retrieves detailed statistics for those specific players
  */
 public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
 
@@ -50,6 +62,106 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         new SettingsModelString(CFGKEY_PLAYER_NAME, "");
     protected final SettingsModelString m_playerId =
         new SettingsModelString(CFGKEY_PLAYER_ID, "");
+
+    /**
+     * Constructor with optional third input port for Player IDs.
+     */
+    public PlayersNodeModel() {
+        super(
+            new PortType[]{
+                ApiSportsConnectionPortObject.TYPE,
+                ReferenceDataPortObject.TYPE,
+                BufferedDataTable.TYPE_OPTIONAL  // Optional player IDs input
+            },
+            new PortType[]{
+                BufferedDataTable.TYPE
+            }
+        );
+    }
+
+    @Override
+    protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        // Get API client from connection port
+        ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
+        ApiSportsHttpClient client = connectionPort.getClient();
+
+        // Get reference data from port
+        ReferenceDataPortObject refDataPort = (ReferenceDataPortObject) inObjects[1];
+        m_dbPath = refDataPort.getDbPath();
+
+        // Load reference data from database
+        loadReferenceData();
+
+        // Check if optional player IDs port is connected
+        BufferedDataTable playerIdsTable = null;
+        if (inObjects.length > 2 && inObjects[2] != null) {
+            playerIdsTable = (BufferedDataTable) inObjects[2];
+            getLogger().info("Player IDs input port connected - using " + playerIdsTable.size() + " player IDs");
+        }
+
+        // If player IDs provided via input port, override query type to use those IDs
+        if (playerIdsTable != null) {
+            // Extract Player_ID column from input table
+            List<Integer> playerIds = extractPlayerIds(playerIdsTable);
+            if (playerIds.isEmpty()) {
+                throw new InvalidSettingsException(
+                    "Input table is connected but contains no Player_ID values");
+            }
+
+            // Convert to comma-separated string and override playerId setting
+            String playerIdList = playerIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
+            getLogger().info("Querying details for " + playerIds.size() + " players: " + playerIdList);
+
+            // Temporarily override settings to use player IDs
+            String originalQueryType = m_queryType.getStringValue();
+            String originalPlayerId = m_playerId.getStringValue();
+
+            m_queryType.setStringValue(QUERY_BY_ID);
+            m_playerId.setStringValue(playerIdList);
+
+            try {
+                // Execute query with overridden settings
+                BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
+                return new PortObject[]{result};
+            } finally {
+                // Restore original settings
+                m_queryType.setStringValue(originalQueryType);
+                m_playerId.setStringValue(originalPlayerId);
+            }
+        } else {
+            // No player IDs input - validate settings and use dialog configuration
+            validateExecutionSettings();
+            BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
+            return new PortObject[]{result};
+        }
+    }
+
+    /**
+     * Extract Player_ID column from input table.
+     */
+    private List<Integer> extractPlayerIds(BufferedDataTable table) throws InvalidSettingsException {
+        DataTableSpec spec = table.getDataTableSpec();
+
+        // Find Player_ID column
+        int playerIdColIndex = spec.findColumnIndex("Player_ID");
+        if (playerIdColIndex < 0) {
+            throw new InvalidSettingsException(
+                "Input table must contain a 'Player_ID' column");
+        }
+
+        List<Integer> playerIds = new ArrayList<>();
+        for (DataRow row : table) {
+            DataCell cell = row.getCell(playerIdColIndex);
+            if (!cell.isMissing() && cell instanceof IntCell) {
+                playerIds.add(((IntCell) cell).getIntValue());
+            }
+        }
+
+        return playerIds;
+    }
 
     @Override
     protected void validateExecutionSettings() throws InvalidSettingsException {
