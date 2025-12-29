@@ -249,9 +249,19 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
             for (JsonNode fixtureItem : response) {
                 try {
-                    // Extract fixture ID for additional API calls
+                    // Extract fixture ID and team IDs for additional API calls
                     JsonNode fixture = fixtureItem.get("fixture");
+                    JsonNode teams = fixtureItem.get("teams");
                     int fixtureId = fixture != null && fixture.has("id") ? fixture.get("id").asInt() : 0;
+
+                    // Extract team IDs
+                    int homeTeamId = 0, awayTeamId = 0;
+                    if (teams != null) {
+                        JsonNode home = teams.get("home");
+                        JsonNode away = teams.get("away");
+                        if (home != null && home.has("id")) homeTeamId = home.get("id").asInt();
+                        if (away != null && away.has("id")) awayTeamId = away.get("id").asInt();
+                    }
 
                     // Fetch additional data if checkboxes are enabled
                     JsonNode events = null;
@@ -267,11 +277,29 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                                            Map.of("fixture", String.valueOf(fixtureId)), mapper);
                         }
 
-                        if (m_includeStatistics.getBooleanValue()) {
+                        if (m_includeStatistics.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
                             exec.setMessage(String.format("Fetching statistics for fixture %d (%d/%d)...",
                                                          fixtureId, rowNum + 1, totalFixtures));
-                            statistics = callApi(client, "/fixtures/statistics",
-                                               Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                            // Make TWO API calls - one for each team
+                            JsonNode homeStats = callApi(client, "/fixtures/statistics",
+                                               Map.of("fixture", String.valueOf(fixtureId),
+                                                     "team", String.valueOf(homeTeamId)), mapper);
+                            JsonNode awayStats = callApi(client, "/fixtures/statistics",
+                                               Map.of("fixture", String.valueOf(fixtureId),
+                                                     "team", String.valueOf(awayTeamId)), mapper);
+
+                            // Combine into single array: [homeStats, awayStats]
+                            statistics = mapper.createArrayNode();
+                            if (homeStats != null && homeStats.isArray() && homeStats.size() > 0) {
+                                ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(homeStats.get(0));
+                            }
+                            if (awayStats != null && awayStats.isArray() && awayStats.size() > 0) {
+                                ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(awayStats.get(0));
+                            }
+
+                            if (statistics.size() == 0) {
+                                getLogger().warn(String.format("No statistics data available for fixture %d", fixtureId));
+                            }
                         }
 
                         if (m_includeLineups.getBooleanValue()) {
@@ -281,11 +309,29 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                                             Map.of("fixture", String.valueOf(fixtureId)), mapper);
                         }
 
-                        if (m_includePlayerStats.getBooleanValue()) {
+                        if (m_includePlayerStats.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
                             exec.setMessage(String.format("Fetching player stats for fixture %d (%d/%d)...",
                                                          fixtureId, rowNum + 1, totalFixtures));
-                            players = callApi(client, "/fixtures/players",
-                                            Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                            // Make TWO API calls - one for each team
+                            JsonNode homePlayers = callApi(client, "/fixtures/players",
+                                            Map.of("fixture", String.valueOf(fixtureId),
+                                                  "team", String.valueOf(homeTeamId)), mapper);
+                            JsonNode awayPlayers = callApi(client, "/fixtures/players",
+                                            Map.of("fixture", String.valueOf(fixtureId),
+                                                  "team", String.valueOf(awayTeamId)), mapper);
+
+                            // Combine into single array: [homePlayers, awayPlayers]
+                            players = mapper.createArrayNode();
+                            if (homePlayers != null && homePlayers.isArray() && homePlayers.size() > 0) {
+                                ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(homePlayers.get(0));
+                            }
+                            if (awayPlayers != null && awayPlayers.isArray() && awayPlayers.size() > 0) {
+                                ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(awayPlayers.get(0));
+                            }
+
+                            if (players.size() == 0) {
+                                getLogger().warn(String.format("No player stats data available for fixture %d", fixtureId));
+                            }
                         }
                     }
 
