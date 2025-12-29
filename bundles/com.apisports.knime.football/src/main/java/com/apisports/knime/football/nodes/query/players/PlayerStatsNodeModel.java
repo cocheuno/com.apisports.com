@@ -56,7 +56,7 @@ public class PlayerStatsNodeModel extends AbstractFootballQueryNodeModel {
             new PortType[]{
                 ApiSportsConnectionPortObject.TYPE,
                 ReferenceDataPortObject.TYPE,
-                PortType.OPTIONAL(BufferedDataTable.TYPE)  // Optional Player_ID or Fixture_ID input
+                BufferedDataTable.TYPE_OPTIONAL  // Optional Player_ID or Fixture_ID input
             },
             new PortType[]{
                 BufferedDataTable.TYPE
