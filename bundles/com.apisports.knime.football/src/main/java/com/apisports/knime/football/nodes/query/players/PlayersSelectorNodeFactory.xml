@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./Carovex.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Players Selector</name>
+
+    <shortDescription>
+        Query basic player information from the Football API
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Lightweight node for querying basic player information from the Football API.
+            This node returns essential player data only, making it ideal for browsing, filtering,
+            and selecting players for further analysis.
+            </p>
+            <p>
+            Unlike the full Players node, this selector does NOT retrieve detailed season statistics.
+            This makes queries faster and more efficient for browsing large player rosters.
+            </p>
+            <p>
+            The output can be filtered using KNIME's Row Filter or other filtering nodes, then fed into
+            the Player Stats node to retrieve comprehensive match-by-match statistics for only the
+            selected players.
+            </p>
+            <p>
+            Supports querying players by team, searching by name, or looking up specific player IDs.
+            </p>
+        </intro>
+
+        <option name="Query Type">
+            Select how to query players:
+            <ul>
+                <li><b>Players by Team:</b> Get all players for a specific team in a season</li>
+                <li><b>Search by Name:</b> Find players by name (supports optional team filter)</li>
+                <li><b>By Player ID:</b> Get specific player by ID</li>
+            </ul>
+        </option>
+
+        <option name="League">
+            Select the league. Populated from reference data input.
+            Used for filtering results when searching by name.
+        </option>
+
+        <option name="Season">
+            Select the season year. Populated from reference data input.
+            Required for all query types.
+        </option>
+
+        <option name="Team">
+            Select team for "Players by Team" queries, or optional team filter for name searches.
+        </option>
+
+        <option name="Player Name">
+            For name search queries, enter the player name or partial name to search.
+        </option>
+
+        <option name="Player ID">
+            For player ID queries, specify the numeric player ID or comma-separated list of IDs.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Connector node
+        </inPort>
+        <inPort index="1" name="Reference Data">
+            Reference data (leagues, seasons, teams) from the Reference Data Loader node
+        </inPort>
+        <outPort index="0" name="Basic Player Info">
+            Table containing basic player data with 9 columns: Player_ID, Name, Firstname, Lastname,
+            Nationality, Age, Team_ID, Team_Name, Position.
+
+            This output can be filtered and fed into the Player Stats node to retrieve comprehensive
+            match-by-match statistics for selected players only.
+        </outPort>
+    </ports>
+</knimeNode>

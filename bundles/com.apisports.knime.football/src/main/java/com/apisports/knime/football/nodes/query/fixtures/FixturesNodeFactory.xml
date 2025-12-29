@@ -13,12 +13,23 @@
     <fullDescription>
         <intro>
             <p>
-            Queries fixture data (matches/games) from the Football API. Supports multiple query types
-            including by league, date range, team, fixture ID, live fixtures, and head-to-head comparisons.
+            Queries comprehensive fixture data (matches/games) from the Football API. This node can work
+            in two modes:
+            </p>
+            <ul>
+                <li><b>Standalone mode:</b> Uses dialog settings to query fixtures by league, date range, team, etc.</li>
+                <li><b>Details mode:</b> Connects to Fixtures Selector output to retrieve detailed data for
+                    specific fixtures (statistics, lineups, player stats, events).</li>
+            </ul>
+            <p>
+            In Details mode, the third optional input port accepts a table with a Fixture_ID column
+            (typically from Fixtures Selector). This allows you to browse/filter fixtures in the selector,
+            then retrieve comprehensive details for only the selected fixtures.
             </p>
             <p>
-            The node takes reference data as input to populate league, season, and team selections.
-            Results include fixture details, teams, scores, status, and venue information.
+            The node supports multiple query types including by league, date range, team, fixture ID,
+            live fixtures, and head-to-head comparisons. Optionally includes detailed statistics, lineups,
+            player stats, and match events.
             </p>
         </intro>
 
@@ -72,9 +83,16 @@
         <inPort index="1" name="Reference Data">
             Reference data (leagues, seasons, teams) from the Reference Data Loader node
         </inPort>
+        <inPort index="2" name="Fixture IDs (Optional)">
+            Optional input table containing a Fixture_ID column. When connected, the node retrieves
+            detailed data for the specified fixtures, ignoring dialog query settings. This is typically
+            used with output from Fixtures Selector node after filtering.
+        </inPort>
         <outPort index="0" name="Fixtures">
-            Table containing fixture data with columns: Fixture_ID, Date, Status, League_ID, League_Name,
-            Season, Round, Home_Team_ID, Home_Team, Away_Team_ID, Away_Team, Home_Goals, Away_Goals, Venue
+            Table containing comprehensive fixture data. Column count varies based on "Include Additional Data"
+            settings: 39 base columns (fixture, league, teams, scores), plus optional columns for events (18),
+            statistics (32), lineups (20), and player stats (28). When input port is connected, retrieves
+            detailed data for the specified Fixture IDs.
         </outPort>
     </ports>
 </knimeNode>
