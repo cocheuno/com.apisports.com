@@ -147,36 +147,18 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         // Build query parameters based on query type
         Map<String, String> params = buildQueryParams();
 
-        // Use ERROR level to ensure it shows up in console
-        getLogger().error("DIAGNOSTIC: Query type: " + m_queryType.getStringValue());
-        getLogger().error("DIAGNOSTIC: Query parameters: " + params);
-        exec.setMessage("Query params: " + params);
-
-        // Create a visible warning to prove new code is running
-        setWarningMessage("DIAGNOSTIC CODE RUNNING - Params: " + params.toString());
-
         // Determine the endpoint based on query type
         String endpoint = getEndpoint();
-        getLogger().error("DIAGNOSTIC: API endpoint: " + endpoint);
 
         // Make API call
         exec.setMessage("Querying fixtures from API...");
         JsonNode response = callApi(client, endpoint, params, mapper);
 
-        String responseInfo = (response != null ? (response.isArray() ? response.size() + " fixtures" : "not an array") : "null");
-        getLogger().error("DIAGNOSTIC: API response: " + responseInfo);
-        exec.setMessage("API returned: " + responseInfo);
-
         // Parse response and create output table
         exec.setMessage("Parsing results...");
         BufferedDataTable result = parseFixturesResponse(response, client, mapper, exec);
 
-        getLogger().error("DIAGNOSTIC: Retrieved " + result.size() + " fixtures");
-        exec.setMessage("Final result: " + result.size() + " fixtures");
-
-        // Update warning with final result - this will show as yellow warning triangle on node
-        setWarningMessage("DIAGNOSTIC: Query returned " + result.size() + " fixtures. Params: " + params.toString() + ", API response: " + responseInfo);
-
+        getLogger().info("Retrieved " + result.size() + " fixtures");
         return result;
     }
 
@@ -298,8 +280,6 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                         if (m_includeStatistics.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
                             exec.setMessage(String.format("Fetching statistics for fixture %d (%d/%d)...",
                                                          fixtureId, rowNum + 1, totalFixtures));
-                            getLogger().info(String.format("Fetching statistics for fixture %d (home team: %d, away team: %d)",
-                                                          fixtureId, homeTeamId, awayTeamId));
 
                             // Make TWO API calls - one for each team
                             JsonNode homeStats = callApi(client, "/fixtures/statistics",
@@ -309,29 +289,13 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                                                Map.of("fixture", String.valueOf(fixtureId),
                                                      "team", String.valueOf(awayTeamId)), mapper);
 
-                            getLogger().info(String.format("Home stats response: %s, Away stats response: %s",
-                                                          (homeStats != null && homeStats.isArray() ? homeStats.size() + " elements" : "null/empty"),
-                                                          (awayStats != null && awayStats.isArray() ? awayStats.size() + " elements" : "null/empty")));
-
                             // Combine into single array: [homeStats, awayStats]
                             statistics = mapper.createArrayNode();
                             if (homeStats != null && homeStats.isArray() && homeStats.size() > 0) {
                                 ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(homeStats.get(0));
-                                getLogger().info("Added home team statistics to combined array");
-                            } else {
-                                getLogger().warn(String.format("No home team statistics for fixture %d (team %d)", fixtureId, homeTeamId));
                             }
                             if (awayStats != null && awayStats.isArray() && awayStats.size() > 0) {
                                 ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(awayStats.get(0));
-                                getLogger().info("Added away team statistics to combined array");
-                            } else {
-                                getLogger().warn(String.format("No away team statistics for fixture %d (team %d)", fixtureId, awayTeamId));
-                            }
-
-                            getLogger().info(String.format("Combined statistics array size: %d", statistics.size()));
-
-                            if (statistics.size() == 0) {
-                                getLogger().warn(String.format("No statistics data available for fixture %d - this is normal for scheduled/future matches or leagues without detailed stats", fixtureId));
                             }
                         }
 
@@ -345,8 +309,6 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                         if (m_includePlayerStats.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
                             exec.setMessage(String.format("Fetching player stats for fixture %d (%d/%d)...",
                                                          fixtureId, rowNum + 1, totalFixtures));
-                            getLogger().info(String.format("Fetching player stats for fixture %d (home team: %d, away team: %d)",
-                                                          fixtureId, homeTeamId, awayTeamId));
 
                             // Make TWO API calls - one for each team
                             JsonNode homePlayers = callApi(client, "/fixtures/players",
@@ -356,29 +318,13 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                                             Map.of("fixture", String.valueOf(fixtureId),
                                                   "team", String.valueOf(awayTeamId)), mapper);
 
-                            getLogger().info(String.format("Home players response: %s, Away players response: %s",
-                                                          (homePlayers != null && homePlayers.isArray() ? homePlayers.size() + " elements" : "null/empty"),
-                                                          (awayPlayers != null && awayPlayers.isArray() ? awayPlayers.size() + " elements" : "null/empty")));
-
                             // Combine into single array: [homePlayers, awayPlayers]
                             players = mapper.createArrayNode();
                             if (homePlayers != null && homePlayers.isArray() && homePlayers.size() > 0) {
                                 ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(homePlayers.get(0));
-                                getLogger().info("Added home team player stats to combined array");
-                            } else {
-                                getLogger().warn(String.format("No home team player stats for fixture %d (team %d)", fixtureId, homeTeamId));
                             }
                             if (awayPlayers != null && awayPlayers.isArray() && awayPlayers.size() > 0) {
                                 ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(awayPlayers.get(0));
-                                getLogger().info("Added away team player stats to combined array");
-                            } else {
-                                getLogger().warn(String.format("No away team player stats for fixture %d (team %d)", fixtureId, awayTeamId));
-                            }
-
-                            getLogger().info(String.format("Combined player stats array size: %d", players.size()));
-
-                            if (players.size() == 0) {
-                                getLogger().warn(String.format("No player stats data available for fixture %d - this is normal for scheduled/future matches or leagues without detailed stats", fixtureId));
                             }
                         }
                     }
@@ -387,9 +333,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                     container.addRowToTable(row);
                     rowNum++;
                 } catch (Exception e) {
-                    getLogger().error("DIAGNOSTIC: Failed to parse fixture row " + rowNum + ": " + e.getMessage(), e);
-                    // Also print full stack trace to console
-                    e.printStackTrace();
+                    getLogger().warn("Failed to parse fixture row " + rowNum + ": " + e.getMessage());
                 }
             }
         }
