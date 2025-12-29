@@ -127,7 +127,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
             getLogger().info("Player IDs input port connected - using " + playerIdsTable.size() + " player IDs");
         }
 
-        // If player IDs provided via input port, override query type to use those IDs
+        // If player IDs provided via input port, query each player individually
         if (playerIdsTable != null) {
             // Extract Player_ID column from input table
             List<Integer> playerIds = extractPlayerIds(playerIdsTable);
@@ -136,35 +136,97 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
                     "Input table is connected but contains no Player_ID values");
             }
 
-            // Convert to comma-separated string and override playerId setting
-            String playerIdList = playerIds.stream()
-                .map(String::valueOf)
-                .collect(Collectors.joining(","));
+            getLogger().info("Querying details for " + playerIds.size() + " players using individual queries");
 
-            getLogger().info("Querying details for " + playerIds.size() + " players: " + playerIdList);
-
-            // Temporarily override settings to use player IDs
-            String originalQueryType = m_queryType.getStringValue();
-            String originalPlayerId = m_playerId.getStringValue();
-
-            m_queryType.setStringValue(QUERY_BY_ID);
-            m_playerId.setStringValue(playerIdList);
-
-            try {
-                // Execute query with overridden settings
-                BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
-                return new PortObject[]{result};
-            } finally {
-                // Restore original settings
-                m_queryType.setStringValue(originalQueryType);
-                m_playerId.setStringValue(originalPlayerId);
-            }
+            // Query players individually to avoid API issues with comma-separated IDs
+            BufferedDataTable result = queryPlayersByIds(playerIds, client, new ObjectMapper(), exec);
+            return new PortObject[]{result};
         } else {
             // No player IDs input - validate settings and use dialog configuration
             validateExecutionSettings();
             BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
             return new PortObject[]{result};
         }
+    }
+
+    /**
+     * Query multiple players by ID (one API call per player) and combine results.
+     * This ensures reliable results even when the API doesn't properly handle comma-separated IDs.
+     */
+    private BufferedDataTable queryPlayersByIds(List<Integer> playerIds,
+                                                  ApiSportsHttpClient client,
+                                                  ObjectMapper mapper,
+                                                  ExecutionContext exec) throws Exception {
+        DataTableSpec spec = getOutputSpec();
+        BufferedDataContainer container = exec.createDataContainer(spec);
+
+        int rowNum = 0;
+        int playerCount = 0;
+        int totalPlayers = playerIds.size();
+        int playersSkipped = 0;
+
+        // Temporarily override settings for ID-based queries
+        String originalQueryType = m_queryType.getStringValue();
+        String originalPlayerId = m_playerId.getStringValue();
+        m_queryType.setStringValue(QUERY_BY_ID);
+
+        try {
+            for (Integer playerId : playerIds) {
+                exec.checkCanceled();
+                exec.setProgress((double) playerCount / totalPlayers,
+                    "Processing player " + (playerCount + 1) + " of " + totalPlayers);
+
+                // Set this single player ID
+                m_playerId.setStringValue(String.valueOf(playerId));
+
+                try {
+                    // Query this single player
+                    Map<String, String> params = buildQueryParams();
+                    String queryType = m_queryType.getStringValue();
+                    String endpoint = getEndpoint(queryType);
+                    JsonNode response = callApi(client, endpoint, params, mapper);
+
+                    // Parse the response (should have one player)
+                    if (response != null && response.isArray() && response.size() > 0) {
+                        for (JsonNode playerItem : response) {
+                            try {
+                                DataRow row = parsePlayerRow(playerItem, rowNum);
+                                container.addRowToTable(row);
+                                rowNum++;
+                            } catch (Exception e) {
+                                getLogger().warn("Failed to parse player " + playerId + ": " + e.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    getLogger().warn("Failed to get details for player " + playerId + ": " + e.getMessage());
+                    playersSkipped++;
+                }
+
+                playerCount++;
+            }
+        } finally {
+            // Restore original settings
+            m_queryType.setStringValue(originalQueryType);
+            m_playerId.setStringValue(originalPlayerId);
+        }
+
+        container.close();
+
+        // Log summary with error information
+        StringBuilder summary = new StringBuilder();
+        summary.append("Retrieved detailed data for ").append(rowNum).append(" of ").append(totalPlayers).append(" players");
+        if (playersSkipped > 0) {
+            summary.append(" (").append(playersSkipped).append(" skipped due to errors)");
+        }
+        getLogger().info(summary.toString());
+
+        // Set warning message if there were errors
+        if (playersSkipped > 0) {
+            setWarningMessage(playersSkipped + " player(s) could not be retrieved. Check console for details.");
+        }
+
+        return container.getTable();
     }
 
     /**
