@@ -146,24 +146,30 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         // Build query parameters based on query type
         Map<String, String> params = buildQueryParams();
-        getLogger().info("Query type: " + m_queryType.getStringValue());
-        getLogger().info("Query parameters: " + params);
+
+        // Use ERROR level to ensure it shows up in console
+        getLogger().error("DIAGNOSTIC: Query type: " + m_queryType.getStringValue());
+        getLogger().error("DIAGNOSTIC: Query parameters: " + params);
+        exec.setMessage("Query params: " + params);
 
         // Determine the endpoint based on query type
         String endpoint = getEndpoint();
-        getLogger().info("API endpoint: " + endpoint);
+        getLogger().error("DIAGNOSTIC: API endpoint: " + endpoint);
 
         // Make API call
         exec.setMessage("Querying fixtures from API...");
         JsonNode response = callApi(client, endpoint, params, mapper);
 
-        getLogger().info("API response: " + (response != null ? (response.isArray() ? response.size() + " fixtures" : "not an array") : "null"));
+        String responseInfo = (response != null ? (response.isArray() ? response.size() + " fixtures" : "not an array") : "null");
+        getLogger().error("DIAGNOSTIC: API response: " + responseInfo);
+        exec.setMessage("API returned: " + responseInfo);
 
         // Parse response and create output table
         exec.setMessage("Parsing results...");
         BufferedDataTable result = parseFixturesResponse(response, client, mapper, exec);
 
-        getLogger().info("Retrieved " + result.size() + " fixtures");
+        getLogger().error("DIAGNOSTIC: Retrieved " + result.size() + " fixtures");
+        exec.setMessage("Final result: " + result.size() + " fixtures");
         return result;
     }
 
