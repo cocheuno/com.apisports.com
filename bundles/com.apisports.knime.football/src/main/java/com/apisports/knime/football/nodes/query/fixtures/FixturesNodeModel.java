@@ -152,6 +152,9 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         getLogger().error("DIAGNOSTIC: Query parameters: " + params);
         exec.setMessage("Query params: " + params);
 
+        // Create a visible warning to prove new code is running
+        setWarningMessage("DIAGNOSTIC CODE RUNNING - Params: " + params.toString());
+
         // Determine the endpoint based on query type
         String endpoint = getEndpoint();
         getLogger().error("DIAGNOSTIC: API endpoint: " + endpoint);
@@ -170,6 +173,10 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         getLogger().error("DIAGNOSTIC: Retrieved " + result.size() + " fixtures");
         exec.setMessage("Final result: " + result.size() + " fixtures");
+
+        // Update warning with final result - this will show as yellow warning triangle on node
+        setWarningMessage("DIAGNOSTIC: Query returned " + result.size() + " fixtures. Params: " + params.toString() + ", API response: " + responseInfo);
+
         return result;
     }
 
