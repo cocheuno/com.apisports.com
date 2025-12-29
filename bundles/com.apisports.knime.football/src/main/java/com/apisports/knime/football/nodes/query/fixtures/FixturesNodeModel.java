@@ -138,8 +138,17 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
-        setWarningMessage("EXECUTE: Starting execution, checking for input port...");
-        getLogger().error("EXECUTE: Starting execution, inObjects.length = " + inObjects.length);
+        // DIAGNOSTIC: Show exactly what we received
+        StringBuilder diagnostic = new StringBuilder("EXECUTE: Got " + inObjects.length + " ports: ");
+        for (int i = 0; i < inObjects.length; i++) {
+            diagnostic.append("[").append(i).append("]=");
+            if (inObjects[i] == null) {
+                diagnostic.append("NULL ");
+            } else {
+                diagnostic.append(inObjects[i].getClass().getSimpleName()).append(" ");
+            }
+        }
+        setWarningMessage(diagnostic.toString());
 
         // Get API client from connection port
         ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
@@ -154,15 +163,24 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         // Check if optional fixture IDs port is connected
         BufferedDataTable fixtureIdsTable = null;
-        if (inObjects.length > 2 && inObjects[2] != null) {
-            getLogger().error("EXECUTE: Port 2 is CONNECTED and NOT NULL!");
-            fixtureIdsTable = (BufferedDataTable) inObjects[2];
-            getLogger().error("EXECUTE: Fixture IDs input contains " + fixtureIdsTable.size() + " fixture IDs");
-            setWarningMessage("EXECUTE: Using " + fixtureIdsTable.size() + " Fixture IDs from input port");
+
+        setWarningMessage("Checking for port 2... length=" + inObjects.length);
+
+        if (inObjects.length >= 3) {
+            setWarningMessage("Array has 3+ elements, checking port[2]...");
+            if (inObjects[2] != null) {
+                setWarningMessage("Port[2] is NOT NULL! Type: " + inObjects[2].getClass().getName());
+                if (inObjects[2] instanceof BufferedDataTable) {
+                    fixtureIdsTable = (BufferedDataTable) inObjects[2];
+                    setWarningMessage("GOT INPUT TABLE WITH " + fixtureIdsTable.size() + " ROWS!");
+                } else {
+                    setWarningMessage("Port[2] is not BufferedDataTable: " + inObjects[2].getClass().getName());
+                }
+            } else {
+                setWarningMessage("Port[2] exists but is NULL");
+            }
         } else {
-            getLogger().error("EXECUTE: Port 2 NOT connected. inObjects.length=" + inObjects.length +
-                            ", port2=" + (inObjects.length > 2 ? (inObjects[2] == null ? "null" : "not-null") : "N/A"));
-            setWarningMessage("EXECUTE: No input port - using dialog settings");
+            setWarningMessage("Array only has " + inObjects.length + " elements, no port[2]");
         }
 
         // If fixture IDs provided via input port, override query type to use those IDs
