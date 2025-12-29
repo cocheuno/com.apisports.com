@@ -192,35 +192,79 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                     "Input table is connected but contains no Fixture_ID values");
             }
 
-            // Convert to comma-separated string and override fixtureId setting
-            String fixtureIdList = fixtureIds.stream()
-                .map(String::valueOf)
-                .collect(Collectors.joining(","));
+            setWarningMessage("Querying details for " + fixtureIds.size() + " fixtures from input...");
+            getLogger().info("Querying details for " + fixtureIds.size() + " fixtures from input port");
 
-            getLogger().info("Querying details for " + fixtureIds.size() + " fixtures: " + fixtureIdList);
+            // Query each fixture individually and combine results
+            // API doesn't accept comma-separated IDs, need to call once per ID
+            BufferedDataTable result = queryFixturesByIds(fixtureIds, client, new ObjectMapper(), exec);
 
-            // Temporarily override settings to use fixture IDs
-            String originalQueryType = m_queryType.getStringValue();
-            String originalFixtureId = m_fixtureId.getStringValue();
-
-            m_queryType.setStringValue(QUERY_BY_ID);
-            m_fixtureId.setStringValue(fixtureIdList);
-
-            try {
-                // Execute query with overridden settings
-                BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
-                return new PortObject[]{result};
-            } finally {
-                // Restore original settings
-                m_queryType.setStringValue(originalQueryType);
-                m_fixtureId.setStringValue(originalFixtureId);
-            }
+            setWarningMessage(null); // Clear warning after success
+            return new PortObject[]{result};
         } else {
             // No fixture IDs input - validate settings and use dialog configuration
             validateExecutionSettings();
             BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
             return new PortObject[]{result};
         }
+    }
+
+    /**
+     * Query multiple fixtures by ID (one API call per fixture) and combine results.
+     */
+    private BufferedDataTable queryFixturesByIds(List<Integer> fixtureIds,
+                                                   ApiSportsHttpClient client,
+                                                   ObjectMapper mapper,
+                                                   ExecutionContext exec) throws Exception {
+        DataTableSpec spec = getOutputSpec();
+        BufferedDataContainer container = exec.createDataContainer(spec);
+
+        int rowNum = 0;
+        int fixtureCount = 0;
+
+        // Temporarily override settings for ID-based queries
+        String originalQueryType = m_queryType.getStringValue();
+        String originalFixtureId = m_fixtureId.getStringValue();
+        m_queryType.setStringValue(QUERY_BY_ID);
+
+        try {
+            for (Integer fixtureId : fixtureIds) {
+                exec.checkCanceled();
+                exec.setProgress((double) fixtureCount / fixtureIds.size(),
+                    "Processing fixture " + (fixtureCount + 1) + " of " + fixtureIds.size());
+
+                // Set this single fixture ID
+                m_fixtureId.setStringValue(String.valueOf(fixtureId));
+
+                try {
+                    // Query this single fixture
+                    Map<String, String> params = buildQueryParams();
+                    String endpoint = getEndpoint();
+                    JsonNode response = callApi(client, endpoint, params, mapper);
+
+                    // Parse the response (should have one fixture)
+                    if (response != null && response.isArray() && response.size() > 0) {
+                        for (JsonNode fixtureItem : response) {
+                            DataRow row = parseFixtureRow(fixtureItem, client, mapper, rowNum, exec);
+                            container.addRowToTable(row);
+                            rowNum++;
+                        }
+                    }
+                } catch (Exception e) {
+                    getLogger().warn("Failed to get details for fixture " + fixtureId + ": " + e.getMessage());
+                }
+
+                fixtureCount++;
+            }
+        } finally {
+            // Restore original settings
+            m_queryType.setStringValue(originalQueryType);
+            m_fixtureId.setStringValue(originalFixtureId);
+        }
+
+        container.close();
+        getLogger().info("Retrieved detailed data for " + rowNum + " fixtures");
+        return container.getTable();
     }
 
     /**
