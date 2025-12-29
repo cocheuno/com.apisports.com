@@ -1279,7 +1279,10 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_includeEvents.validateSettings(settings);
         m_includeLineups.validateSettings(settings);
         m_includeStatistics.validateSettings(settings);
-        m_includePlayerStats.validateSettings(settings);
+        // Backward compatibility: only validate if setting exists
+        if (settings.containsKey(CFGKEY_INCLUDE_PLAYER_STATS)) {
+            m_includePlayerStats.validateSettings(settings);
+        }
     }
 
     @Override
@@ -1294,6 +1297,9 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_includeEvents.loadSettingsFrom(settings);
         m_includeLineups.loadSettingsFrom(settings);
         m_includeStatistics.loadSettingsFrom(settings);
-        m_includePlayerStats.loadSettingsFrom(settings);
+        // Backward compatibility: only load if setting exists (default is false)
+        if (settings.containsKey(CFGKEY_INCLUDE_PLAYER_STATS)) {
+            m_includePlayerStats.loadSettingsFrom(settings);
+        }
     }
 }
