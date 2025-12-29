@@ -54,8 +54,11 @@ public abstract class AbstractFootballQueryNodeModel extends NodeModel {
     protected List<ReferenceData.Season> m_seasons;
     protected List<ReferenceData.Team> m_teams;
 
+    /**
+     * Default constructor for nodes with standard ports.
+     */
     protected AbstractFootballQueryNodeModel() {
-        super(
+        this(
             new PortType[]{
                 ApiSportsConnectionPortObject.TYPE,
                 ReferenceDataPortObject.TYPE
@@ -64,6 +67,14 @@ public abstract class AbstractFootballQueryNodeModel extends NodeModel {
                 BufferedDataTable.TYPE
             }
         );
+    }
+
+    /**
+     * Constructor for nodes with custom port configurations.
+     * Subclasses can override ports (e.g., to add optional input ports).
+     */
+    protected AbstractFootballQueryNodeModel(PortType[] inPortTypes, PortType[] outPortTypes) {
+        super(inPortTypes, outPortTypes);
     }
 
     @Override

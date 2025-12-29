@@ -9,6 +9,8 @@
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.fixtures.FixturesNodeFactory"/>
       <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.fixtures.FixturesSelectorNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.standings.StandingsNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.players.PlayersNodeFactory"/>

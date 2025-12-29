@@ -2,6 +2,8 @@ package com.apisports.knime.football.nodes.query.fixtures;
 
 import com.apisports.knime.core.client.ApiSportsHttpClient;
 import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeModel;
+import com.apisports.knime.port.ApiSportsConnectionPortObject;
+import com.apisports.knime.port.ReferenceDataPortObject;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.knime.core.data.DataCell;
@@ -25,13 +27,23 @@ import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * NodeModel for Fixtures query node.
  * Queries fixture data from the Football API.
+ *
+ * This node can work in two modes:
+ * 1. Standalone: Uses dialog settings to query fixtures
+ * 2. Details mode: Accepts optional input table with Fixture_ID column
+ *    and retrieves detailed data for those specific fixtures
  */
 public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
@@ -75,6 +87,106 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         new SettingsModelBoolean(CFGKEY_INCLUDE_STATISTICS, false);
     protected final SettingsModelBoolean m_includePlayerStats =
         new SettingsModelBoolean(CFGKEY_INCLUDE_PLAYER_STATS, false);
+
+    /**
+     * Constructor with optional third input port for Fixture IDs.
+     */
+    public FixturesNodeModel() {
+        super(
+            new PortType[]{
+                ApiSportsConnectionPortObject.TYPE,
+                ReferenceDataPortObject.TYPE,
+                PortType.OPTIONAL(BufferedDataTable.TYPE)  // Optional fixture IDs input
+            },
+            new PortType[]{
+                BufferedDataTable.TYPE
+            }
+        );
+    }
+
+    @Override
+    protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
+        // Get API client from connection port
+        ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
+        ApiSportsHttpClient client = connectionPort.getClient();
+
+        // Get reference data from port
+        ReferenceDataPortObject refDataPort = (ReferenceDataPortObject) inObjects[1];
+        m_dbPath = refDataPort.getDbPath();
+
+        // Load reference data from database
+        loadReferenceData();
+
+        // Check if optional fixture IDs port is connected
+        BufferedDataTable fixtureIdsTable = null;
+        if (inObjects.length > 2 && inObjects[2] != null) {
+            fixtureIdsTable = (BufferedDataTable) inObjects[2];
+            getLogger().info("Fixture IDs input port connected - using " + fixtureIdsTable.size() + " fixture IDs");
+        }
+
+        // If fixture IDs provided via input port, override query type to use those IDs
+        if (fixtureIdsTable != null) {
+            // Extract Fixture_ID column from input table
+            List<Integer> fixtureIds = extractFixtureIds(fixtureIdsTable);
+            if (fixtureIds.isEmpty()) {
+                throw new InvalidSettingsException(
+                    "Input table is connected but contains no Fixture_ID values");
+            }
+
+            // Convert to comma-separated string and override fixtureId setting
+            String fixtureIdList = fixtureIds.stream()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
+            getLogger().info("Querying details for " + fixtureIds.size() + " fixtures: " + fixtureIdList);
+
+            // Temporarily override settings to use fixture IDs
+            String originalQueryType = m_queryType.getStringValue();
+            String originalFixtureId = m_fixtureId.getStringValue();
+
+            m_queryType.setStringValue(QUERY_BY_ID);
+            m_fixtureId.setStringValue(fixtureIdList);
+
+            try {
+                // Execute query with overridden settings
+                BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
+                return new PortObject[]{result};
+            } finally {
+                // Restore original settings
+                m_queryType.setStringValue(originalQueryType);
+                m_fixtureId.setStringValue(originalFixtureId);
+            }
+        } else {
+            // No fixture IDs input - validate settings and use dialog configuration
+            validateExecutionSettings();
+            BufferedDataTable result = executeQuery(client, new ObjectMapper(), exec);
+            return new PortObject[]{result};
+        }
+    }
+
+    /**
+     * Extract Fixture_ID column from input table.
+     */
+    private List<Integer> extractFixtureIds(BufferedDataTable table) throws InvalidSettingsException {
+        DataTableSpec spec = table.getDataTableSpec();
+
+        // Find Fixture_ID column
+        int fixtureIdColIndex = spec.findColumnIndex("Fixture_ID");
+        if (fixtureIdColIndex < 0) {
+            throw new InvalidSettingsException(
+                "Input table must contain a 'Fixture_ID' column");
+        }
+
+        List<Integer> fixtureIds = new ArrayList<>();
+        for (DataRow row : table) {
+            DataCell cell = row.getCell(fixtureIdColIndex);
+            if (!cell.isMissing() && cell instanceof IntCell) {
+                fixtureIds.add(((IntCell) cell).getIntValue());
+            }
+        }
+
+        return fixtureIds;
+    }
 
     @Override
     protected void validateExecutionSettings() throws InvalidSettingsException {
