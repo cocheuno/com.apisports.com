@@ -80,26 +80,29 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
     }
 
     @Override
-    protected DataTableSpec[] configure(final DataTableSpec[] inSpecs) throws InvalidSettingsException {
+    protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
         // Check if optional Player IDs input port is connected
         if (inSpecs.length > 2 && inSpecs[2] != null) {
             // Optional port IS connected - will use input player IDs at execution
             // No need to validate dialog settings
             getLogger().info("Player IDs input detected - will use input data, ignoring dialog settings");
 
-            // Verify the input has a Player_ID column
-            int playerIdCol = inSpecs[2].findColumnIndex("Player_ID");
-            if (playerIdCol < 0) {
-                throw new InvalidSettingsException(
-                    "Input table must contain a 'Player_ID' column");
+            // Verify the input is a DataTableSpec with Player_ID column
+            if (inSpecs[2] instanceof DataTableSpec) {
+                DataTableSpec inputSpec = (DataTableSpec) inSpecs[2];
+                int playerIdCol = inputSpec.findColumnIndex("Player_ID");
+                if (playerIdCol < 0) {
+                    throw new InvalidSettingsException(
+                        "Input table must contain a 'Player_ID' column");
+                }
             }
 
             // Return output spec
-            return new DataTableSpec[]{getOutputSpec()};
+            return new PortObjectSpec[]{getOutputSpec()};
         } else {
             // Optional port NOT connected - validate dialog settings
             validateExecutionSettings();
-            return new DataTableSpec[]{getOutputSpec()};
+            return new PortObjectSpec[]{getOutputSpec()};
         }
     }
 
