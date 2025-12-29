@@ -105,6 +105,30 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
     }
 
     @Override
+    protected DataTableSpec[] configure(final DataTableSpec[] inSpecs) throws InvalidSettingsException {
+        // Check if optional Fixture IDs input port is connected
+        if (inSpecs.length > 2 && inSpecs[2] != null) {
+            // Optional port IS connected - will use input fixture IDs at execution
+            // No need to validate dialog settings
+            getLogger().info("Fixture IDs input detected - will use input data, ignoring dialog settings");
+
+            // Verify the input has a Fixture_ID column
+            int fixtureIdCol = inSpecs[2].findColumnIndex("Fixture_ID");
+            if (fixtureIdCol < 0) {
+                throw new InvalidSettingsException(
+                    "Input table must contain a 'Fixture_ID' column");
+            }
+
+            // Return output spec (dynamic based on include settings)
+            return new DataTableSpec[]{getOutputSpec()};
+        } else {
+            // Optional port NOT connected - validate dialog settings
+            validateExecutionSettings();
+            return new DataTableSpec[]{getOutputSpec()};
+        }
+    }
+
+    @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         // Get API client from connection port
         ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
