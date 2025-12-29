@@ -15,6 +15,10 @@
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.players.PlayersNodeFactory"/>
       <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.players.PlayersSelectorNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
+            factory-class="com.apisports.knime.football.nodes.query.players.PlayerStatsNodeFactory"/>
+      <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.teams.TeamsNodeFactory"/>
       <node category-path="/carovex/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.odds.OddsNodeFactory"/>

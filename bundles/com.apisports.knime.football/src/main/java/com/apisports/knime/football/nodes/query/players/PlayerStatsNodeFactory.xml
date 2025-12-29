@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<knimeNode icon="./Carovex.png" type="Manipulator"
+    xmlns="http://knime.org/node/v4.1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+
+    <name>Player Stats</name>
+
+    <shortDescription>
+        Query detailed match-by-match player performance statistics
+    </shortDescription>
+
+    <fullDescription>
+        <intro>
+            <p>
+            Retrieves comprehensive match-by-match player performance statistics from the Football API.
+            This node can work in two modes:
+            </p>
+            <ul>
+                <li><b>Standalone mode:</b> Uses dialog settings to query player stats by fixture ID</li>
+                <li><b>Fixture IDs mode:</b> Connects to Fixtures Selector output to retrieve player stats
+                    for specific fixtures</li>
+            </ul>
+            <p>
+            In Fixture IDs mode, the third optional input port accepts a table with a Fixture_ID column
+            (typically from Fixtures Selector). This allows you to browse/filter fixtures first,
+            then retrieve comprehensive player statistics for only the selected fixtures.
+            </p>
+            <p>
+            Returns detailed performance data including: minutes played, position, rating, goals, assists,
+            shots, passes, tackles, dribbles, fouls, and cards. Each row represents one player's
+            performance in one match.
+            </p>
+            <p>
+            <b>Typical workflow:</b>
+            <br/>1. Use Fixtures Selector to browse fixtures for a league/team/date range
+            <br/>2. Filter to interesting matches using KNIME's Row Filter
+            <br/>3. Connect filtered output to this node's optional input port
+            <br/>4. Retrieve detailed player statistics for only those matches
+            </p>
+        </intro>
+
+        <option name="Fixture ID">
+            For standalone mode, specify the numeric fixture ID or comma-separated list of fixture IDs.
+            This field is optional when the input port is connected.
+        </option>
+    </fullDescription>
+
+    <ports>
+        <inPort index="0" name="API Connection">
+            API-Sports connection from the API-Connector node
+        </inPort>
+        <inPort index="1" name="Reference Data">
+            Reference data (leagues, seasons, teams) from the Reference Data Loader node
+        </inPort>
+        <inPort index="2" name="Fixture IDs (Optional)">
+            Optional input table containing a Fixture_ID column. When connected, the node retrieves
+            detailed player statistics for all players who participated in the specified fixtures,
+            ignoring the dialog's Fixture ID setting. This is typically used with output from
+            Fixtures Selector node after filtering.
+        </inPort>
+        <outPort index="0" name="Player Stats">
+            Table containing detailed player performance statistics with 28 columns:
+            <ul>
+                <li>IDs: Fixture_ID, Player_ID, Team_ID</li>
+                <li>Info: Player_Name, Team_Name</li>
+                <li>Game: Minutes, Number, Position, Rating, Captain, Substitute</li>
+                <li>Goals: Goals_Total, Goals_Conceded, Assists, Saves</li>
+                <li>Shots: Shots_Total, Shots_On_Target</li>
+                <li>Passes: Passes_Total, Passes_Key, Passes_Accuracy</li>
+                <li>Tackles: Tackles_Total, Tackles_Blocks, Tackles_Interceptions</li>
+                <li>Dribbles: Dribbles_Attempts, Dribbles_Success</li>
+                <li>Discipline: Fouls_Drawn, Fouls_Committed, Yellow_Cards, Red_Cards</li>
+            </ul>
+            Each row represents one player's performance in one match.
+        </outPort>
+    </ports>
+</knimeNode>
