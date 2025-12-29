@@ -221,6 +221,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         int rowNum = 0;
         int fixtureCount = 0;
+        int totalFixtures = fixtureIds.size();
 
         // Temporarily override settings for ID-based queries
         String originalQueryType = m_queryType.getStringValue();
@@ -230,8 +231,8 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         try {
             for (Integer fixtureId : fixtureIds) {
                 exec.checkCanceled();
-                exec.setProgress((double) fixtureCount / fixtureIds.size(),
-                    "Processing fixture " + (fixtureCount + 1) + " of " + fixtureIds.size());
+                exec.setProgress((double) fixtureCount / totalFixtures,
+                    "Processing fixture " + (fixtureCount + 1) + " of " + totalFixtures);
 
                 // Set this single fixture ID
                 m_fixtureId.setStringValue(String.valueOf(fixtureId));
@@ -245,7 +246,66 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                     // Parse the response (should have one fixture)
                     if (response != null && response.isArray() && response.size() > 0) {
                         for (JsonNode fixtureItem : response) {
-                            DataRow row = parseFixtureRow(fixtureItem, client, mapper, rowNum, exec);
+                            // Initialize optional data nodes
+                            JsonNode events = null;
+                            JsonNode statistics = null;
+                            JsonNode lineups = null;
+                            JsonNode players = null;
+
+                            // Extract team IDs for additional queries
+                            JsonNode teams = fixtureItem.get("teams");
+                            int homeTeamId = teams != null && teams.has("home") && teams.get("home").has("id")
+                                ? teams.get("home").get("id").asInt() : 0;
+                            int awayTeamId = teams != null && teams.has("away") && teams.get("away").has("id")
+                                ? teams.get("away").get("id").asInt() : 0;
+
+                            // Fetch additional data if requested (same logic as parseFixturesResponse)
+                            if (m_includeEvents.getBooleanValue()) {
+                                events = callApi(client, "/fixtures/events",
+                                               Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                            }
+
+                            if (m_includeStatistics.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
+                                JsonNode homeStats = callApi(client, "/fixtures/statistics",
+                                                   Map.of("fixture", String.valueOf(fixtureId),
+                                                         "team", String.valueOf(homeTeamId)), mapper);
+                                JsonNode awayStats = callApi(client, "/fixtures/statistics",
+                                                   Map.of("fixture", String.valueOf(fixtureId),
+                                                         "team", String.valueOf(awayTeamId)), mapper);
+
+                                statistics = mapper.createArrayNode();
+                                if (homeStats != null && homeStats.isArray() && homeStats.size() > 0) {
+                                    ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(homeStats.get(0));
+                                }
+                                if (awayStats != null && awayStats.isArray() && awayStats.size() > 0) {
+                                    ((com.fasterxml.jackson.databind.node.ArrayNode)statistics).add(awayStats.get(0));
+                                }
+                            }
+
+                            if (m_includeLineups.getBooleanValue()) {
+                                lineups = callApi(client, "/fixtures/lineups",
+                                                Map.of("fixture", String.valueOf(fixtureId)), mapper);
+                            }
+
+                            if (m_includePlayerStats.getBooleanValue() && homeTeamId > 0 && awayTeamId > 0) {
+                                JsonNode homePlayers = callApi(client, "/fixtures/players",
+                                                Map.of("fixture", String.valueOf(fixtureId),
+                                                      "team", String.valueOf(homeTeamId)), mapper);
+                                JsonNode awayPlayers = callApi(client, "/fixtures/players",
+                                                Map.of("fixture", String.valueOf(fixtureId),
+                                                      "team", String.valueOf(awayTeamId)), mapper);
+
+                                players = mapper.createArrayNode();
+                                if (homePlayers != null && homePlayers.isArray() && homePlayers.size() > 0) {
+                                    ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(homePlayers.get(0));
+                                }
+                                if (awayPlayers != null && awayPlayers.isArray() && awayPlayers.size() > 0) {
+                                    ((com.fasterxml.jackson.databind.node.ArrayNode)players).add(awayPlayers.get(0));
+                                }
+                            }
+
+                            // Parse the row with all data
+                            DataRow row = parseFixtureRow(fixtureItem, events, statistics, lineups, players, rowNum);
                             container.addRowToTable(row);
                             rowNum++;
                         }
