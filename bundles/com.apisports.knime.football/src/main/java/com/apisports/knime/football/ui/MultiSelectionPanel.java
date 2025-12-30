@@ -390,36 +390,30 @@ public class MultiSelectionPanel<T> extends JPanel {
      */
     public void loadSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
             throws NotConfigurableException {
-        try {
-            // Load previously selected items
-            String[] savedItems = settings.getStringArray(m_settingsKey, new String[]{});
-            boolean hadInputPort = settings.getBoolean(m_settingsKey + "_hasInputPort", false);
+        // Load previously selected items (using default values, no exceptions thrown)
+        String[] savedItems = settings.getStringArray(m_settingsKey, new String[]{});
+        boolean hadInputPort = settings.getBoolean(m_settingsKey + "_hasInputPort", false);
 
-            // Load all available items
-            loadItems();
+        // Load all available items
+        loadItems();
 
-            // Find matching items and pre-select them
-            Set<T> itemsToSelect = new HashSet<>();
-            for (String savedItem : savedItems) {
-                for (T item : m_allItems) {
-                    if (m_formatter.format(item).equals(savedItem)) {
-                        itemsToSelect.add(item);
-                        break;
-                    }
+        // Find matching items and pre-select them
+        Set<T> itemsToSelect = new HashSet<>();
+        for (String savedItem : savedItems) {
+            for (T item : m_allItems) {
+                if (m_formatter.format(item).equals(savedItem)) {
+                    itemsToSelect.add(item);
+                    break;
                 }
             }
+        }
 
-            setPreSelectedItems(itemsToSelect);
+        setPreSelectedItems(itemsToSelect);
 
-            // If there was an input port before but not in these specs, clear the flag
-            if (hadInputPort && !hasInputPortInSpecs(specs)) {
-                m_hasInputPort = false;
-                m_inputPortInfoLabel.setVisible(false);
-            }
-
-        } catch (InvalidSettingsException e) {
-            // Use defaults - empty selection
-            loadItems();
+        // If there was an input port before but not in these specs, clear the flag
+        if (hadInputPort && !hasInputPortInSpecs(specs)) {
+            m_hasInputPort = false;
+            m_inputPortInfoLabel.setVisible(false);
         }
     }
 
