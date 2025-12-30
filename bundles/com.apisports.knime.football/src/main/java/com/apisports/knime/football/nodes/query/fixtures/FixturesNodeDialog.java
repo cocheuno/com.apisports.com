@@ -12,6 +12,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Map;
 
 /**
  * Dialog for Fixtures query node.
@@ -232,6 +233,10 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         boolean includeStatistics = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_STATISTICS, false);
         boolean includePlayerStats = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_PLAYER_STATS, false);
 
+        // PRE-POPULATE from flow variables if available (from upstream Fixtures Selector)
+        // This allows Fixtures node to inherit settings from Fixtures Selector
+        prePopulateFromFlowVariables();
+
         // Set values in UI components
         queryTypeCombo.setSelectedItem(queryType);
 
@@ -250,6 +255,86 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         selectTeam2(team2Id);
 
         updateVisibilityForQueryType();
+    }
+
+    /**
+     * Pre-populate dialog fields from flow variables if they exist.
+     * This is called when node is connected to Fixtures Selector.
+     */
+    private void prePopulateFromFlowVariables() {
+        try {
+            // Check if flow variables exist (from upstream Fixtures Selector)
+            Map<String, org.knime.core.node.workflow.FlowVariable> flowVars = getAvailableFlowVariables();
+
+            if (flowVars.containsKey("fixtures_league_id")) {
+                int leagueId = flowVars.get("fixtures_league_id").getIntValue();
+                selectLeagueById(leagueId);
+            }
+
+            if (flowVars.containsKey("fixtures_season")) {
+                int season = flowVars.get("fixtures_season").getIntValue();
+                selectSeasonByValue(season);
+            }
+
+            if (flowVars.containsKey("fixtures_team_id")) {
+                int teamId = flowVars.get("fixtures_team_id").getIntValue();
+                if (teamId > 0) {
+                    selectTeamById(teamId);
+                }
+            }
+
+            // Show info message to user
+            if (flowVars.containsKey("fixtures_query_type")) {
+                String info = "Pre-populated from upstream Fixtures Selector";
+                JOptionPane.showMessageDialog(getPanel(),
+                    info,
+                    "Settings Loaded",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+
+        } catch (Exception e) {
+            // Flow variables not available or error reading them - use defaults
+            // This is normal if not connected to Fixtures Selector
+        }
+    }
+
+    /**
+     * Select league in combo by ID.
+     */
+    private void selectLeagueById(int leagueId) {
+        for (int i = 0; i < leagueCombo.getItemCount(); i++) {
+            LeagueItem item = leagueCombo.getItemAt(i);
+            if (item.id == leagueId) {
+                leagueCombo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Select season in combo by value.
+     */
+    private void selectSeasonByValue(int season) {
+        for (int i = 0; i < seasonCombo.getItemCount(); i++) {
+            Integer item = seasonCombo.getItemAt(i);
+            if (item != null && item == season) {
+                seasonCombo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Select team in combo by ID.
+     */
+    private void selectTeamById(int teamId) {
+        for (int i = 0; i < teamCombo.getItemCount(); i++) {
+            TeamItem item = teamCombo.getItemAt(i);
+            if (item != null && item.id == teamId) {
+                teamCombo.setSelectedIndex(i);
+                break;
+            }
+        }
     }
 
     @Override
