@@ -12,6 +12,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Dialog for Fixtures query node.
@@ -28,13 +31,49 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
     private JCheckBox includePlayerStatsCheck;
     private JComboBox<TeamItem> team2Combo;
 
+    // Multi-selection team list (replaces inherited teamCombo for main team selection)
+    private JList<TeamItem> teamList;
+    private DefaultListModel<TeamItem> teamListModel;
+    private JScrollPane teamScrollPane;
+
     // Panels that show/hide based on query type
     private JPanel fixtureIdPanel;
     private JPanel h2hPanel;
 
     public FixturesNodeDialog() {
         super();
+        // Hide the inherited single-selection teamCombo from parent class
+        teamCombo.setVisible(false);
+        teamOptionalCheckbox.setVisible(false);
+
+        // Create multi-selection team list to replace the combo
+        createTeamList();
+
         addFixturesSpecificComponents();
+    }
+
+    /**
+     * Create multi-selection team list to replace the inherited single-selection teamCombo.
+     */
+    private void createTeamList() {
+        teamListModel = new DefaultListModel<>();
+        teamList = new JList<>(teamListModel);
+        teamList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        teamList.setVisibleRowCount(6);
+
+        teamScrollPane = new JScrollPane(teamList);
+        teamScrollPane.setPreferredSize(new Dimension(300, 120));
+
+        // Create panel for team list and add it after the parent's team panel (which is now hidden)
+        JPanel teamListPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        teamListPanel.add(new JLabel("Teams:"));
+        teamListPanel.add(teamScrollPane);
+        teamListPanel.add(new JLabel("(Select one or more)"));
+
+        // Add after the existing (but hidden) team panel
+        // The parent class adds: League, Season, Team panels
+        // We insert our team list panel at index 2 (after League and Season)
+        mainPanel.add(teamListPanel, 2);
     }
 
     private void addFixturesSpecificComponents() {
@@ -151,9 +190,47 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
 
     @Override
     protected void onLeagueChanged() {
-        super.onLeagueChanged();
+        // Call parent to update season combo (skip parent's team combo update since it's hidden)
+        LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
+        if (selectedLeague == null) {
+            return;
+        }
+
+        // Update season combo (from parent logic)
+        if (allSeasons != null) {
+            seasonCombo.removeAllItems();
+            for (com.apisports.knime.port.ReferenceData.Season season : allSeasons) {
+                if (season.getLeagueIds().contains(selectedLeague.id)) {
+                    seasonCombo.addItem(season.getYear());
+                }
+            }
+        }
+
+        // Populate team list (replaces parent's teamCombo logic)
+        populateTeamList();
+
         // Also populate team2Combo with the same teams for H2H queries
         populateTeam2Combo();
+    }
+
+    /**
+     * Populate team list with teams from selected league.
+     */
+    private void populateTeamList() {
+        LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
+        if (selectedLeague == null) {
+            return;
+        }
+
+        teamListModel.clear();
+
+        if (allTeams != null) {
+            for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
+                if (team.getLeagueIds().contains(selectedLeague.id)) {
+                    teamListModel.addElement(new TeamItem(team.getId(), team.getName()));
+                }
+            }
+        }
     }
 
     /**
@@ -211,8 +288,8 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         leagueCombo.setEnabled(showLeague || showDate || showH2H);
         // Season is required for league, team, date range, and H2H queries
         seasonCombo.setEnabled(showLeague || showDate || showH2H || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
-        // Enable team for league, team, date range, and H2H queries
-        teamCombo.setEnabled(showLeague || showDate || showH2H || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
+        // Enable team list for league, team, date range, and H2H queries
+        teamList.setEnabled(showLeague || showDate || showH2H || FixturesNodeModel.QUERY_BY_TEAM.equals(queryType));
 
         mainPanel.revalidate();
         mainPanel.repaint();
@@ -232,6 +309,13 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         boolean includeStatistics = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_STATISTICS, false);
         boolean includePlayerStats = settings.getBoolean(FixturesNodeModel.CFGKEY_INCLUDE_PLAYER_STATS, false);
 
+        // Load team IDs (multi-selection support)
+        int[] teamIds = settings.getIntArray(FixturesNodeModel.CFGKEY_TEAM_IDS, new int[]{});
+
+        // PRE-POPULATE from flow variables if available (from upstream Fixtures Selector)
+        // This allows Fixtures node to inherit settings from Fixtures Selector
+        prePopulateFromFlowVariables();
+
         // Set values in UI components
         queryTypeCombo.setSelectedItem(queryType);
 
@@ -245,11 +329,117 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         includeStatisticsCheck.setSelected(includeStatistics);
         includePlayerStatsCheck.setSelected(includePlayerStats);
 
+        // Populate and select teams in list
+        populateTeamList();
+        selectTeamsByIds(teamIds);
+
         // Populate and select team2 for H2H queries
         populateTeam2Combo();
         selectTeam2(team2Id);
 
         updateVisibilityForQueryType();
+    }
+
+    /**
+     * Pre-populate dialog fields from flow variables if they exist.
+     * This is called when node is connected to Fixtures Selector.
+     */
+    private void prePopulateFromFlowVariables() {
+        try {
+            // Check if flow variables exist (from upstream Fixtures Selector)
+            Map<String, org.knime.core.node.workflow.FlowVariable> flowVars = getAvailableFlowVariables();
+
+            if (flowVars.containsKey("fixtures_league_id")) {
+                int leagueId = flowVars.get("fixtures_league_id").getIntValue();
+                selectLeagueById(leagueId);
+            }
+
+            if (flowVars.containsKey("fixtures_season")) {
+                int season = flowVars.get("fixtures_season").getIntValue();
+                selectSeasonByValue(season);
+            }
+
+            if (flowVars.containsKey("fixtures_team_id")) {
+                int teamId = flowVars.get("fixtures_team_id").getIntValue();
+                if (teamId > 0) {
+                    // Select team from Fixtures Selector - highlight it in the list
+                    selectTeamsByIds(new int[]{teamId});
+                }
+            }
+
+            // Show info message to user
+            if (flowVars.containsKey("fixtures_query_type")) {
+                String info = "Pre-populated from upstream Fixtures Selector";
+                JOptionPane.showMessageDialog(getPanel(),
+                    info,
+                    "Settings Loaded",
+                    JOptionPane.INFORMATION_MESSAGE);
+            }
+
+        } catch (Exception e) {
+            // Flow variables not available or error reading them - use defaults
+            // This is normal if not connected to Fixtures Selector
+        }
+    }
+
+    /**
+     * Select league in combo by ID.
+     */
+    private void selectLeagueById(int leagueId) {
+        for (int i = 0; i < leagueCombo.getItemCount(); i++) {
+            LeagueItem item = leagueCombo.getItemAt(i);
+            if (item.id == leagueId) {
+                leagueCombo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Select season in combo by value.
+     */
+    private void selectSeasonByValue(int season) {
+        for (int i = 0; i < seasonCombo.getItemCount(); i++) {
+            Integer item = seasonCombo.getItemAt(i);
+            if (item != null && item == season) {
+                seasonCombo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Select team in list by ID.
+     */
+    private void selectTeamById(int teamId) {
+        for (int i = 0; i < teamListModel.getSize(); i++) {
+            TeamItem item = teamListModel.getElementAt(i);
+            if (item != null && item.id == teamId) {
+                teamList.addSelectionInterval(i, i);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Select multiple teams in list by IDs.
+     */
+    private void selectTeamsByIds(int[] teamIds) {
+        teamList.clearSelection();
+        if (teamIds == null || teamIds.length == 0) {
+            return;
+        }
+
+        for (int teamId : teamIds) {
+            if (teamId > 0) {
+                selectTeamById(teamId);
+            }
+        }
+
+        // Ensure first selected item is visible
+        if (teamList.getSelectedIndex() >= 0) {
+            teamList.ensureIndexIsVisible(teamList.getSelectedIndex());
+        }
     }
 
     @Override
@@ -264,6 +454,18 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         settings.addString(FixturesNodeModel.CFGKEY_FIXTURE_ID, fixtureIdField.getText());
         settings.addString(FixturesNodeModel.CFGKEY_STATUS,
                           (String) statusCombo.getSelectedItem());
+
+        // Save selected teams (multi-selection support)
+        List<TeamItem> selectedTeams = teamList.getSelectedValuesList();
+        int[] teamIds = new int[selectedTeams.size()];
+        for (int i = 0; i < selectedTeams.size(); i++) {
+            teamIds[i] = selectedTeams.get(i).id;
+        }
+        settings.addIntArray(FixturesNodeModel.CFGKEY_TEAM_IDS, teamIds);
+
+        // Also save first team ID for backwards compatibility with parent class
+        int firstTeamId = teamIds.length > 0 ? teamIds[0] : -1;
+        settings.addInt(AbstractFootballQueryNodeModel.CFGKEY_TEAM_ID, firstTeamId);
 
         // Save team2 for H2H queries
         TeamItem selectedTeam2 = (TeamItem) team2Combo.getSelectedItem();
