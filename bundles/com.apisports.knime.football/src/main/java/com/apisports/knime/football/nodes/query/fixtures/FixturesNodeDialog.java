@@ -1,6 +1,7 @@
 package com.apisports.knime.football.nodes.query.fixtures;
 
 import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeDialog;
+import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeModel;
 import com.apisports.knime.football.ui.DateRangePanel;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
@@ -200,7 +201,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         if (allSeasons != null) {
             seasonCombo.removeAllItems();
             for (com.apisports.knime.port.ReferenceData.Season season : allSeasons) {
-                if (season.getLeagueIds().contains(selectedLeague.id)) {
+                if (season.getLeagueId() == selectedLeague.id) {
                     seasonCombo.addItem(season.getYear());
                 }
             }
