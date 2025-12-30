@@ -620,6 +620,16 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         // Build query parameters based on query type
         Map<String, String> params = buildQueryParams();
 
+        // DIAGNOSTIC: Log resolved date range if using date-based query
+        if (QUERY_BY_DATE.equals(m_queryType.getStringValue())) {
+            getLogger().info("=== DATE RANGE DIAGNOSTICS ===");
+            getLogger().info("Date Mode: " + m_dateMode.getStringValue());
+            getLogger().info("Resolved dates - From: " + params.get("from") + ", To: " + params.get("to"));
+            getLogger().info("Season: " + params.get("season"));
+            getLogger().info("League: " + params.get("league"));
+            getLogger().info("Query params: " + params);
+        }
+
         // Determine the endpoint based on query type
         String endpoint = getEndpoint();
 
