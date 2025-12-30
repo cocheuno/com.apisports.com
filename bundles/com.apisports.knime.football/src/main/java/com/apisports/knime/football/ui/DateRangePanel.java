@@ -349,44 +349,39 @@ public class DateRangePanel extends JPanel {
      */
     public void loadSettingsFrom(NodeSettingsRO settings, PortObjectSpec[] specs)
             throws NotConfigurableException {
-        try {
-            // Load mode
-            String mode = settings.getString("dateMode", MODE_RANGE);
+        // Load mode
+        String mode = settings.getString("dateMode", MODE_RANGE);
 
-            // Select appropriate radio button
-            switch (mode) {
-                case MODE_RANGE:
-                    m_rangeModeRadio.setSelected(true);
-                    break;
-                case MODE_RELATIVE:
-                    m_relativeModeRadio.setSelected(true);
-                    break;
-                case MODE_SEASON:
-                    m_seasonModeRadio.setSelected(true);
-                    break;
-                case MODE_INCREMENTAL:
-                    if (m_incrementalModeRadio != null) {
-                        m_incrementalModeRadio.setSelected(true);
-                    }
-                    break;
-            }
-
-            // Load all settings
-            m_fromDateField.setText(settings.getString("fromDate", LocalDate.now().toString()));
-            m_toDateField.setText(settings.getString("toDate", LocalDate.now().plusDays(7).toString()));
-            m_relativeDirectionCombo.setSelectedItem(settings.getString("relativeDirection", DIR_NEXT));
-            m_relativeCountSpinner.setValue(settings.getInt("relativeCount", 10));
-            m_relativeUnitCombo.setSelectedItem(settings.getString("relativeUnit", UNIT_MATCHES));
-            if (m_incrementalVariableField != null) {
-                m_incrementalVariableField.setText(
-                    settings.getString("incrementalVariable", m_defaultIncrementalVariable));
-            }
-
-            updatePanelStates();
-
-        } catch (InvalidSettingsException e) {
-            // Use defaults
+        // Select appropriate radio button
+        switch (mode) {
+            case MODE_RANGE:
+                m_rangeModeRadio.setSelected(true);
+                break;
+            case MODE_RELATIVE:
+                m_relativeModeRadio.setSelected(true);
+                break;
+            case MODE_SEASON:
+                m_seasonModeRadio.setSelected(true);
+                break;
+            case MODE_INCREMENTAL:
+                if (m_incrementalModeRadio != null) {
+                    m_incrementalModeRadio.setSelected(true);
+                }
+                break;
         }
+
+        // Load all settings (using default values, no exceptions thrown)
+        m_fromDateField.setText(settings.getString("fromDate", LocalDate.now().toString()));
+        m_toDateField.setText(settings.getString("toDate", LocalDate.now().plusDays(7).toString()));
+        m_relativeDirectionCombo.setSelectedItem(settings.getString("relativeDirection", DIR_NEXT));
+        m_relativeCountSpinner.setValue(settings.getInt("relativeCount", 10));
+        m_relativeUnitCombo.setSelectedItem(settings.getString("relativeUnit", UNIT_MATCHES));
+        if (m_incrementalVariableField != null) {
+            m_incrementalVariableField.setText(
+                settings.getString("incrementalVariable", m_defaultIncrementalVariable));
+        }
+
+        updatePanelStates();
     }
 
     /**
