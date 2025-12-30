@@ -47,6 +47,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
     static final String CFGKEY_QUERY_TYPE = "queryType";
     static final String CFGKEY_PLAYER_NAME = "playerName";
     static final String CFGKEY_PLAYER_ID = "playerId";
+    static final String CFGKEY_TEAM_IDS = "teamIds";  // Multi-selection team IDs
 
     // Query type options
     static final String QUERY_TOP_SCORERS = "Top Scorers";
@@ -63,6 +64,9 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         new SettingsModelString(CFGKEY_PLAYER_NAME, "");
     protected final SettingsModelString m_playerId =
         new SettingsModelString(CFGKEY_PLAYER_ID, "");
+
+    // Multi-selection team IDs (stored separately from SettingsModel pattern)
+    private int[] m_teamIds = new int[]{};
 
     /**
      * Constructor with optional third input port for Player IDs.
@@ -269,7 +273,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         if (QUERY_BY_ID.equals(queryType) && m_playerId.getStringValue().isEmpty()) {
             throw new InvalidSettingsException("Please specify a player ID");
         }
-        if (QUERY_BY_TEAM.equals(queryType) && m_teamId.getIntValue() <= 0) {
+        if (QUERY_BY_TEAM.equals(queryType) && (m_teamIds == null || m_teamIds.length == 0 || m_teamIds[0] <= 0)) {
             throw new InvalidSettingsException("Please select a team");
         }
     }
@@ -321,6 +325,10 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         Map<String, String> params = new HashMap<>();
         String queryType = m_queryType.getStringValue();
 
+        // Get first selected team ID (multi-selection UI uses first team)
+        int firstTeamId = (m_teamIds != null && m_teamIds.length > 0) ? m_teamIds[0] : -1;
+        // TODO: Support multiple teams by making multiple queries and combining results
+
         if (QUERY_BY_ID.equals(queryType)) {
             params.put("id", m_playerId.getStringValue());
             params.put("season", String.valueOf(m_season.getIntValue()));
@@ -330,13 +338,13 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
                 params.put("league", String.valueOf(m_leagueId.getIntValue()));
             }
             // Add team filter for name searches when team is selected
-            if (m_teamId.getIntValue() > 0) {
-                params.put("team", String.valueOf(m_teamId.getIntValue()));
+            if (firstTeamId > 0) {
+                params.put("team", String.valueOf(firstTeamId));
             }
             params.put("season", String.valueOf(m_season.getIntValue()));
         } else if (QUERY_BY_TEAM.equals(queryType)) {
             // Get all players for a specific team
-            params.put("team", String.valueOf(m_teamId.getIntValue()));
+            params.put("team", String.valueOf(firstTeamId));
             params.put("season", String.valueOf(m_season.getIntValue()));
         } else {
             // Top scorers/assists/cards queries - these endpoints don't support team filtering
@@ -471,6 +479,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         m_queryType.saveSettingsTo(settings);
         m_playerName.saveSettingsTo(settings);
         m_playerId.saveSettingsTo(settings);
+        settings.addIntArray(CFGKEY_TEAM_IDS, m_teamIds);  // Save multi-selection team IDs
     }
 
     @Override
@@ -487,5 +496,13 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         m_queryType.loadSettingsFrom(settings);
         m_playerName.loadSettingsFrom(settings);
         m_playerId.loadSettingsFrom(settings);
+
+        // Load multi-selection team IDs with backward compatibility
+        if (settings.containsKey(CFGKEY_TEAM_IDS)) {
+            m_teamIds = settings.getIntArray(CFGKEY_TEAM_IDS);
+        } else {
+            // Backward compatibility: use single team ID from parent class if new array doesn't exist
+            m_teamIds = (m_teamId.getIntValue() > 0) ? new int[]{m_teamId.getIntValue()} : new int[]{};
+        }
     }
 }
