@@ -11,6 +11,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Dialog for Players Selector node.
@@ -24,9 +26,45 @@ public class PlayersSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
     private JPanel nameSearchPanel;
     private JPanel idSearchPanel;
 
+    // Multi-selection team list (replaces inherited teamCombo for main team selection)
+    private JList<TeamItem> teamList;
+    private DefaultListModel<TeamItem> teamListModel;
+    private JScrollPane teamScrollPane;
+
     public PlayersSelectorNodeDialog() {
         super();
+        // Hide the inherited single-selection teamCombo from parent class
+        teamCombo.setVisible(false);
+        teamOptionalCheckbox.setVisible(false);
+
+        // Create multi-selection team list to replace the combo
+        createTeamList();
+
         addPlayersSpecificComponents();
+    }
+
+    /**
+     * Create multi-selection team list to replace the inherited single-selection teamCombo.
+     */
+    private void createTeamList() {
+        teamListModel = new DefaultListModel<>();
+        teamList = new JList<>(teamListModel);
+        teamList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        teamList.setVisibleRowCount(6);
+
+        teamScrollPane = new JScrollPane(teamList);
+        teamScrollPane.setPreferredSize(new Dimension(300, 120));
+
+        // Create panel for team list and add it after the parent's team panel (which is now hidden)
+        JPanel teamListPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        teamListPanel.add(new JLabel("Teams:"));
+        teamListPanel.add(teamScrollPane);
+        teamListPanel.add(new JLabel("(Select one or more)"));
+
+        // Add after the existing (but hidden) team panel
+        // The parent class adds: League, Season, Team panels
+        // We insert our team list panel at index 2 (after League and Season)
+        mainPanel.add(teamListPanel, 2);
     }
 
     private void addPlayersSpecificComponents() {
@@ -89,6 +127,82 @@ public class PlayersSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
         updateVisibilityForQueryType();
     }
 
+    @Override
+    protected void onLeagueChanged() {
+        // Call parent to update season combo (skip parent's team combo update since it's hidden)
+        LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
+        if (selectedLeague == null) {
+            return;
+        }
+
+        // Update season combo (from parent logic)
+        if (allSeasons != null) {
+            seasonCombo.removeAllItems();
+            for (com.apisports.knime.port.ReferenceData.Season season : allSeasons) {
+                if (season.getLeagueId() == selectedLeague.id) {
+                    seasonCombo.addItem(season.getYear());
+                }
+            }
+        }
+
+        // Populate team list (replaces parent's teamCombo logic)
+        populateTeamList();
+    }
+
+    /**
+     * Populate team list with teams from selected league.
+     */
+    private void populateTeamList() {
+        LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
+        if (selectedLeague == null) {
+            return;
+        }
+
+        teamListModel.clear();
+
+        if (allTeams != null) {
+            for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
+                if (team.getLeagueIds().contains(selectedLeague.id)) {
+                    teamListModel.addElement(new TeamItem(team.getId(), team.getName()));
+                }
+            }
+        }
+    }
+
+    /**
+     * Select team in list by ID.
+     */
+    private void selectTeamById(int teamId) {
+        for (int i = 0; i < teamListModel.getSize(); i++) {
+            TeamItem item = teamListModel.getElementAt(i);
+            if (item != null && item.id == teamId) {
+                teamList.addSelectionInterval(i, i);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Select multiple teams in list by IDs.
+     */
+    private void selectTeamsByIds(int[] teamIds) {
+        teamList.clearSelection();
+        if (teamIds == null || teamIds.length == 0) {
+            return;
+        }
+
+        for (int teamId : teamIds) {
+            if (teamId > 0) {
+                selectTeamById(teamId);
+            }
+        }
+
+        // Ensure first selected item is visible
+        if (teamList.getSelectedIndex() >= 0) {
+            teamList.ensureIndexIsVisible(teamList.getSelectedIndex());
+        }
+    }
+
     private void updateVisibilityForQueryType() {
         String queryType = (String) queryTypeCombo.getSelectedItem();
 
@@ -103,10 +217,7 @@ public class PlayersSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
         idSearchPanel.setVisible(showIdSearch);
         leagueCombo.setEnabled(true); // Always useful for filtering
         seasonCombo.setEnabled(true); // Always needed
-        teamCombo.setEnabled(enableTeamCombo);
-
-        // Hide the confusing checkbox for Players Selector node
-        teamOptionalCheckbox.setVisible(false);
+        teamList.setEnabled(enableTeamCombo);
 
         mainPanel.revalidate();
         mainPanel.repaint();
@@ -120,9 +231,16 @@ public class PlayersSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
         String playerName = settings.getString(PlayersSelectorNodeModel.CFGKEY_PLAYER_NAME, "");
         String playerId = settings.getString(PlayersSelectorNodeModel.CFGKEY_PLAYER_ID, "");
 
+        // Load team IDs (multi-selection support)
+        int[] teamIds = settings.getIntArray(PlayersSelectorNodeModel.CFGKEY_TEAM_IDS, new int[]{});
+
         queryTypeCombo.setSelectedItem(queryType);
         playerNameField.setText(playerName);
         playerIdField.setText(playerId);
+
+        // Populate and select teams in list
+        populateTeamList();
+        selectTeamsByIds(teamIds);
 
         updateVisibilityForQueryType();
     }
@@ -133,5 +251,17 @@ public class PlayersSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
                           (String) queryTypeCombo.getSelectedItem());
         settings.addString(PlayersSelectorNodeModel.CFGKEY_PLAYER_NAME, playerNameField.getText());
         settings.addString(PlayersSelectorNodeModel.CFGKEY_PLAYER_ID, playerIdField.getText());
+
+        // Save selected teams (multi-selection support)
+        List<TeamItem> selectedTeams = teamList.getSelectedValuesList();
+        int[] teamIds = new int[selectedTeams.size()];
+        for (int i = 0; i < selectedTeams.size(); i++) {
+            teamIds[i] = selectedTeams.get(i).id;
+        }
+        settings.addIntArray(PlayersSelectorNodeModel.CFGKEY_TEAM_IDS, teamIds);
+
+        // Also save first team ID for backwards compatibility with parent class
+        int firstTeamId = teamIds.length > 0 ? teamIds[0] : -1;
+        settings.addInt("teamId", firstTeamId);  // Parent class uses "teamId" key
     }
 }
