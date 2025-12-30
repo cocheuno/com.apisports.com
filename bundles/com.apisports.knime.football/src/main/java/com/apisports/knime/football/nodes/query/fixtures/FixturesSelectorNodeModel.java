@@ -260,8 +260,33 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
         exec.setMessage("Parsing results...");
         BufferedDataTable result = parseFixturesResponse(response, exec);
 
+        // Push flow variables with configuration for downstream nodes
+        pushFlowVariables();
+
         getLogger().info("Retrieved " + result.size() + " fixtures");
         return result;
+    }
+
+    /**
+     * Push configuration as flow variables for downstream nodes to use.
+     */
+    private void pushFlowVariables() {
+        // Common settings
+        pushFlowVariableInt("fixtures_league_id", m_leagueId.getIntValue());
+        pushFlowVariableInt("fixtures_season", m_season.getIntValue());
+        pushFlowVariableInt("fixtures_team_id", m_teamId.getIntValue());
+        pushFlowVariableString("fixtures_query_type", m_queryType.getStringValue());
+        pushFlowVariableString("fixtures_status", m_status.getStringValue());
+
+        // DateRangePanel settings
+        pushFlowVariableString("fixtures_date_mode", m_dateMode.getStringValue());
+        pushFlowVariableString("fixtures_from_date", m_fromDate.getStringValue());
+        pushFlowVariableString("fixtures_to_date", m_toDate.getStringValue());
+        pushFlowVariableString("fixtures_relative_direction", m_relativeDirection.getStringValue());
+        pushFlowVariableInt("fixtures_relative_count", m_relativeCount.getIntValue());
+        pushFlowVariableString("fixtures_relative_unit", m_relativeUnit.getStringValue());
+
+        getLogger().info("Pushed flow variables for downstream nodes");
     }
 
     /**
