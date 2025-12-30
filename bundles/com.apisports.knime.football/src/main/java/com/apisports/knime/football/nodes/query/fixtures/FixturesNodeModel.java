@@ -54,6 +54,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
     static final String CFGKEY_QUERY_TYPE = "queryType";
     static final String CFGKEY_FIXTURE_ID = "fixtureId";
     static final String CFGKEY_STATUS = "status";
+    static final String CFGKEY_TEAM_IDS = "teamIds";  // Multi-selection team IDs
     static final String CFGKEY_TEAM2_ID = "team2Id";
     static final String CFGKEY_INCLUDE_EVENTS = "includeEvents";
     static final String CFGKEY_INCLUDE_LINEUPS = "includeLineups";
@@ -122,6 +123,9 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         new SettingsModelString(CFGKEY_RELATIVE_UNIT, UNIT_MATCHES);
     protected final SettingsModelString m_incrementalVariable =
         new SettingsModelString(CFGKEY_INCREMENTAL_VARIABLE, "lastFixtureQuery");
+
+    // Multi-selection team IDs (stored separately from SettingsModel pattern)
+    private int[] m_teamIds = new int[]{};
 
     /**
      * Constructor with optional third input port for Fixture IDs.
@@ -471,7 +475,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                 throw new InvalidSettingsException("Please specify a fixture ID");
             }
         } else if (QUERY_H2H.equals(queryType)) {
-            if (m_teamId.getIntValue() <= 0) {
+            if (m_teamIds == null || m_teamIds.length == 0 || m_teamIds[0] <= 0) {
                 throw new InvalidSettingsException("Please select Team 1 for Head to Head query");
             }
             if (m_team2Id.getIntValue() <= 0) {
@@ -663,13 +667,17 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         Map<String, String> params = new HashMap<>();
         String queryType = m_queryType.getStringValue();
 
+        // Get first selected team ID (multi-selection UI uses first team)
+        int firstTeamId = (m_teamIds != null && m_teamIds.length > 0) ? m_teamIds[0] : -1;
+        // TODO: Support multiple teams by making multiple queries and combining results
+
         if (QUERY_BY_LEAGUE.equals(queryType)) {
             params.put("league", String.valueOf(m_leagueId.getIntValue()));
             params.put("season", String.valueOf(m_season.getIntValue()));
 
             // Optional team filter
-            if (m_teamId.getIntValue() > 0) {
-                params.put("team", String.valueOf(m_teamId.getIntValue()));
+            if (firstTeamId > 0) {
+                params.put("team", String.valueOf(firstTeamId));
             }
 
         } else if (QUERY_BY_DATE.equals(queryType)) {
@@ -687,12 +695,12 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
             }
 
             // Optional team filter
-            if (m_teamId.getIntValue() > 0) {
-                params.put("team", String.valueOf(m_teamId.getIntValue()));
+            if (firstTeamId > 0) {
+                params.put("team", String.valueOf(firstTeamId));
             }
 
         } else if (QUERY_BY_TEAM.equals(queryType)) {
-            params.put("team", String.valueOf(m_teamId.getIntValue()));
+            params.put("team", String.valueOf(firstTeamId));
             params.put("season", String.valueOf(m_season.getIntValue()));
 
         } else if (QUERY_BY_ID.equals(queryType)) {
@@ -703,7 +711,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
 
         } else if (QUERY_H2H.equals(queryType)) {
             // H2H requires two team IDs in format "teamId1-teamId2"
-            params.put("h2h", String.valueOf(m_teamId.getIntValue()) + "-" +
+            params.put("h2h", String.valueOf(firstTeamId) + "-" +
                               String.valueOf(m_team2Id.getIntValue()));
             // Add season to filter H2H results to specific season
             params.put("season", String.valueOf(m_season.getIntValue()));
@@ -1780,6 +1788,7 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_queryType.saveSettingsTo(settings);
         m_fixtureId.saveSettingsTo(settings);
         m_status.saveSettingsTo(settings);
+        settings.addIntArray(CFGKEY_TEAM_IDS, m_teamIds);  // Save multi-selection team IDs
         m_team2Id.saveSettingsTo(settings);
         m_includeEvents.saveSettingsTo(settings);
         m_includeLineups.saveSettingsTo(settings);
@@ -1830,6 +1839,15 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
         m_queryType.loadSettingsFrom(settings);
         m_fixtureId.loadSettingsFrom(settings);
         m_status.loadSettingsFrom(settings);
+
+        // Load multi-selection team IDs with backward compatibility
+        if (settings.containsKey(CFGKEY_TEAM_IDS)) {
+            m_teamIds = settings.getIntArray(CFGKEY_TEAM_IDS);
+        } else {
+            // Backward compatibility: use single team ID from parent class if new array doesn't exist
+            m_teamIds = (m_teamId.getIntValue() > 0) ? new int[]{m_teamId.getIntValue()} : new int[]{};
+        }
+
         m_team2Id.loadSettingsFrom(settings);
         m_includeEvents.loadSettingsFrom(settings);
         m_includeLineups.loadSettingsFrom(settings);
