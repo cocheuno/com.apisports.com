@@ -466,7 +466,7 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
 
         // Also save first team ID for backwards compatibility with parent class
         int firstTeamId = teamIds.length > 0 ? teamIds[0] : -1;
-        settings.addInt(AbstractFootballQueryNodeModel.CFGKEY_TEAM_ID, firstTeamId);
+        settings.addInt("teamId", firstTeamId);  // Parent class uses "teamId" key
 
         // Save team2 for H2H queries
         TeamItem selectedTeam2 = (TeamItem) team2Combo.getSelectedItem();
