@@ -1,6 +1,7 @@
 package com.apisports.knime.football.nodes.query.fixtures;
 
 import com.apisports.knime.football.nodes.query.AbstractFootballQueryNodeDialog;
+import com.apisports.knime.football.ui.DateRangePanel;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
@@ -19,14 +20,12 @@ import java.awt.event.ActionListener;
 public class FixturesSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
 
     private JComboBox<String> queryTypeCombo;
-    private JTextField fromDateField;
-    private JTextField toDateField;
+    private DateRangePanel dateRangePanel;  // NEW: Replaces simple text fields
     private JTextField fixtureIdField;
     private JComboBox<String> statusCombo;
     private JComboBox<TeamItem> team2Combo;
 
     // Panels that show/hide based on query type
-    private JPanel dateRangePanel;
     private JPanel fixtureIdPanel;
     private JPanel h2hPanel;
 
@@ -61,14 +60,9 @@ public class FixturesSelectorNodeDialog extends AbstractFootballQueryNodeDialog 
         queryTypePanel.add(queryTypeCombo);
         mainPanel.add(queryTypePanel);
 
-        // Date range panel (for date queries)
-        dateRangePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        dateRangePanel.add(new JLabel("From Date (YYYY-MM-DD):"));
-        fromDateField = new JTextField(12);
-        dateRangePanel.add(fromDateField);
-        dateRangePanel.add(new JLabel("  To Date:"));
-        toDateField = new JTextField(12);
-        dateRangePanel.add(toDateField);
+        // Date range panel - NEW: Use DateRangePanel component
+        // Note: Incremental mode disabled for selector (selectors are lightweight discovery)
+        dateRangePanel = new DateRangePanel("lastFixtureQuery", false);
         mainPanel.add(dateRangePanel);
 
         // Fixture ID panel (for ID queries)
@@ -218,16 +212,16 @@ public class FixturesSelectorNodeDialog extends AbstractFootballQueryNodeDialog 
         // Load fixtures-specific settings
         String queryType = settings.getString(FixturesSelectorNodeModel.CFGKEY_QUERY_TYPE,
                                               FixturesSelectorNodeModel.QUERY_BY_LEAGUE);
-        String fromDate = settings.getString(FixturesSelectorNodeModel.CFGKEY_FROM_DATE, "");
-        String toDate = settings.getString(FixturesSelectorNodeModel.CFGKEY_TO_DATE, "");
         String fixtureId = settings.getString(FixturesSelectorNodeModel.CFGKEY_FIXTURE_ID, "");
         String status = settings.getString(FixturesSelectorNodeModel.CFGKEY_STATUS, "");
         int team2Id = settings.getInt(FixturesSelectorNodeModel.CFGKEY_TEAM2_ID, -1);
 
         // Set values in UI components
         queryTypeCombo.setSelectedItem(queryType);
-        fromDateField.setText(fromDate);
-        toDateField.setText(toDate);
+
+        // Load date range panel settings
+        dateRangePanel.loadSettingsFrom(settings, specs);
+
         fixtureIdField.setText(fixtureId);
         statusCombo.setSelectedItem(status);
 
@@ -243,8 +237,10 @@ public class FixturesSelectorNodeDialog extends AbstractFootballQueryNodeDialog 
         // Save fixtures-specific settings
         settings.addString(FixturesSelectorNodeModel.CFGKEY_QUERY_TYPE,
                           (String) queryTypeCombo.getSelectedItem());
-        settings.addString(FixturesSelectorNodeModel.CFGKEY_FROM_DATE, fromDateField.getText());
-        settings.addString(FixturesSelectorNodeModel.CFGKEY_TO_DATE, toDateField.getText());
+
+        // Save date range panel settings
+        dateRangePanel.saveSettingsTo(settings);
+
         settings.addString(FixturesSelectorNodeModel.CFGKEY_FIXTURE_ID, fixtureIdField.getText());
         settings.addString(FixturesSelectorNodeModel.CFGKEY_STATUS,
                           (String) statusCombo.getSelectedItem());
