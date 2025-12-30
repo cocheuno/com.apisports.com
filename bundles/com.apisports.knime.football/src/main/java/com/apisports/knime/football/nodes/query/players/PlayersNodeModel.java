@@ -47,6 +47,7 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
     static final String CFGKEY_QUERY_TYPE = "queryType";
     static final String CFGKEY_PLAYER_NAME = "playerName";
     static final String CFGKEY_PLAYER_ID = "playerId";
+    static final String CFGKEY_TEAM_IDS = "teamIds";  // Multi-selection team IDs
 
     // Query type options
     static final String QUERY_TOP_SCORERS = "Top Scorers";
@@ -63,6 +64,9 @@ public class PlayersNodeModel extends AbstractFootballQueryNodeModel {
         new SettingsModelString(CFGKEY_PLAYER_NAME, "");
     protected final SettingsModelString m_playerId =
         new SettingsModelString(CFGKEY_PLAYER_ID, "");
+
+    // Multi-selection team IDs (stored separately from SettingsModel pattern)
+    private int[] m_teamIds = new int[]{};
 
     /**
      * Constructor with optional third input port for Player IDs.
