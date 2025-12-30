@@ -196,6 +196,7 @@ public class DateRangePanel extends JPanel {
         fromPanel.add(m_fromDateField);
         m_fromDateButton = new JButton("📅");
         m_fromDateButton.setToolTipText("Select date");
+        m_fromDateButton.addActionListener(e -> showDatePicker(m_fromDateField));
         fromPanel.add(m_fromDateButton);
 
         // To date
@@ -206,6 +207,7 @@ public class DateRangePanel extends JPanel {
         toPanel.add(m_toDateField);
         m_toDateButton = new JButton("📅");
         m_toDateButton.setToolTipText("Select date");
+        m_toDateButton.addActionListener(e -> showDatePicker(m_toDateField));
         toPanel.add(m_toDateButton);
 
         // Quick buttons
@@ -397,5 +399,62 @@ public class DateRangePanel extends JPanel {
         models.put("relativeUnit", m_relativeUnit);
         models.put("incrementalVariable", m_incrementalVariable);
         return models;
+    }
+
+    /**
+     * Show a simple date picker dialog and update the target field.
+     */
+    private void showDatePicker(JTextField targetField) {
+        // Parse current date from field, or use today if invalid
+        LocalDate currentDate;
+        try {
+            currentDate = LocalDate.parse(targetField.getText());
+        } catch (Exception e) {
+            currentDate = LocalDate.now();
+        }
+
+        // Create spinners for year, month, day
+        JSpinner yearSpinner = new JSpinner(new SpinnerNumberModel(
+            currentDate.getYear(), 2000, 2100, 1));
+        JSpinner monthSpinner = new JSpinner(new SpinnerNumberModel(
+            currentDate.getMonthValue(), 1, 12, 1));
+        JSpinner daySpinner = new JSpinner(new SpinnerNumberModel(
+            currentDate.getDayOfMonth(), 1, 31, 1));
+
+        // Create panel with spinners
+        JPanel panel = new JPanel(new FlowLayout());
+        panel.add(new JLabel("Year:"));
+        panel.add(yearSpinner);
+        panel.add(new JLabel("Month:"));
+        panel.add(monthSpinner);
+        panel.add(new JLabel("Day:"));
+        panel.add(daySpinner);
+
+        // Show dialog
+        int result = JOptionPane.showConfirmDialog(
+            this,
+            panel,
+            "Select Date",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
+        );
+
+        // Update field if OK was clicked
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                int year = (Integer) yearSpinner.getValue();
+                int month = (Integer) monthSpinner.getValue();
+                int day = (Integer) daySpinner.getValue();
+                LocalDate selectedDate = LocalDate.of(year, month, day);
+                targetField.setText(selectedDate.toString());
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Invalid date: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+                );
+            }
+        }
     }
 }
