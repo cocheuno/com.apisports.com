@@ -1,0 +1,56 @@
+Carovex API-Sports KNIME Extension
+Copyright 2025 Carone Labs
+
+This product includes software developed by Carone Labs (info@caronelabs.com).
+
+===============================================================================
+
+This product includes the following third-party software:
+
+-------------------------------------------------------------------------------
+Jackson JSON Processor
+-------------------------------------------------------------------------------
+Copyright 2007-2024 FasterXML, LLC
+
+Licensed under the Apache License, Version 2.0.
+https://github.com/FasterXML/jackson
+
+Includes:
+- jackson-core
+- jackson-databind
+- jackson-annotations
+
+-------------------------------------------------------------------------------
+SQLite JDBC Driver
+-------------------------------------------------------------------------------
+Copyright 2006-2024 Taro L. Saito and contributors
+
+Licensed under the Apache License, Version 2.0.
+https://github.com/xerial/sqlite-jdbc
+
+-------------------------------------------------------------------------------
+SnakeYAML
+-------------------------------------------------------------------------------
+Copyright 2008-2024 Andrey Somov and contributors
+
+Licensed under the Apache License, Version 2.0.
+https://github.com/snakeyaml/snakeyaml
+
+===============================================================================
+
+This product is designed to work with:
+
+- KNIME Analytics Platform (https://www.knime.com/)
+  KNIME is licensed under the GNU General Public License, version 3.
+
+- API-Sports.io (https://api-sports.io/)
+  API-Sports is a third-party data provider. Use of their API requires
+  acceptance of their terms of service.
+
+===============================================================================
+
+Trademarks:
+
+- "KNIME" is a registered trademark of KNIME AG.
+- "API-Sports" is a trademark of API-Sports.io.
+- All other trademarks are the property of their respective owners.
