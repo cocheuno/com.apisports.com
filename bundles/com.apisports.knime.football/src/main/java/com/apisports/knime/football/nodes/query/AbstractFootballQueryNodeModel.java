@@ -96,10 +96,16 @@ public abstract class AbstractFootballQueryNodeModel extends NodeModel {
     @Override
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         // Get API client from connection port
+        if (inObjects[0] == null) {
+            throw new InvalidSettingsException("API connection port is not connected. Please connect an API-Sports Connector node.");
+        }
         ApiSportsConnectionPortObject connectionPort = (ApiSportsConnectionPortObject) inObjects[0];
         ApiSportsHttpClient client = connectionPort.getClient();
 
         // Get reference data from port
+        if (inObjects[1] == null) {
+            throw new InvalidSettingsException("Reference data port is not connected. Please connect a Reference Data Loader node.");
+        }
         ReferenceDataPortObject refDataPort = (ReferenceDataPortObject) inObjects[1];
         m_dbPath = refDataPort.getDbPath();
 
