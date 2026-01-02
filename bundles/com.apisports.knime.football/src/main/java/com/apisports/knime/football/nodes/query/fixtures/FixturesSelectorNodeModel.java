@@ -118,10 +118,7 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
         } else if (QUERY_BY_DATE.equals(queryType)) {
             // Validate date mode settings
             validateDateMode();
-            // Date range queries require season
-            if (m_season.getIntValue() <= 0) {
-                throw new InvalidSettingsException("Please select a season for date range query");
-            }
+            // Season is optional for date range queries - if not specified, API returns all fixtures for the date range
         } else if (QUERY_BY_ID.equals(queryType)) {
             if (m_fixtureId.getStringValue().isEmpty()) {
                 throw new InvalidSettingsException("Please specify a fixture ID");
@@ -338,8 +335,10 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
             params.put("from", normalizeDateFormat(dateRange[0]));
             params.put("to", normalizeDateFormat(dateRange[1]));
 
-            // Season is required for date queries
-            params.put("season", String.valueOf(m_season.getIntValue()));
+            // Optional season filter - if not specified, returns fixtures from all seasons
+            if (m_season.getIntValue() > 0) {
+                params.put("season", String.valueOf(m_season.getIntValue()));
+            }
 
             // Optional league filter
             if (m_leagueId.getIntValue() > 0) {
