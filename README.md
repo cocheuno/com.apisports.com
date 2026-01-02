@@ -1,4 +1,4 @@
-# Carovex API-Sports KNIME Extension
+# Carovex:tm: API-Sports KNIME Extension
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![KNIME](https://img.shields.io/badge/KNIME-5.5.0+-yellow.svg)](https://www.knime.com/)
