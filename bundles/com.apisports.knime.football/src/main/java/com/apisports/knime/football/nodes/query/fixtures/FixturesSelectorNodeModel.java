@@ -307,9 +307,13 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
 
         // DIAGNOSTIC: Log resolved date range if using date-based query
         if (QUERY_BY_DATE.equals(m_queryType.getStringValue())) {
-            getLogger().info("=== DATE RANGE DIAGNOSTICS ===");
+            getLogger().info("=== DATE QUERY DIAGNOSTICS ===");
             getLogger().info("Date Mode: " + m_dateMode.getStringValue());
-            getLogger().info("Resolved dates - From: " + params.get("from") + ", To: " + params.get("to"));
+            if (params.containsKey("date")) {
+                getLogger().info("Single date query: " + params.get("date"));
+            } else {
+                getLogger().info("Date range query - From: " + params.get("from") + ", To: " + params.get("to"));
+            }
             getLogger().info("Season: " + params.get("season"));
             getLogger().info("League: " + params.get("league"));
             getLogger().info("Query params: " + params);
@@ -385,8 +389,18 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
         } else if (QUERY_BY_DATE.equals(queryType)) {
             // Resolve date range from DateRangePanel settings
             String[] dateRange = resolveDateRange();
-            params.put("from", normalizeDateFormat(dateRange[0]));
-            params.put("to", normalizeDateFormat(dateRange[1]));
+            String fromDate = normalizeDateFormat(dateRange[0]);
+            String toDate = normalizeDateFormat(dateRange[1]);
+
+            // Use 'date' parameter for single date, 'from'/'to' for date range
+            if (fromDate.equals(toDate)) {
+                // Single date query - API expects 'date' parameter
+                params.put("date", fromDate);
+            } else {
+                // Date range query - API expects 'from' and 'to' parameters
+                params.put("from", fromDate);
+                params.put("to", toDate);
+            }
 
             // Optional season filter - if not specified, returns fixtures from all seasons
             if (m_season.getIntValue() > 0) {
