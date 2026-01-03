@@ -305,19 +305,10 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
         // Build query parameters based on query type
         Map<String, String> params = buildQueryParams();
 
-        // DIAGNOSTIC: Log resolved date range if using date-based query
-        if (QUERY_BY_DATE.equals(m_queryType.getStringValue())) {
-            getLogger().info("=== DATE QUERY DIAGNOSTICS ===");
-            getLogger().info("Date Mode: " + m_dateMode.getStringValue());
-            if (params.containsKey("date")) {
-                getLogger().info("Single date query: " + params.get("date"));
-            } else {
-                getLogger().info("Date range query - From: " + params.get("from") + ", To: " + params.get("to"));
-            }
-            getLogger().info("Season: " + params.get("season"));
-            getLogger().info("League: " + params.get("league"));
-            getLogger().info("Query params: " + params);
-        }
+        // DIAGNOSTIC: Log query parameters (using WARN level to ensure visibility)
+        getLogger().warn("=== FIXTURES QUERY DIAGNOSTICS ===");
+        getLogger().warn("Query Type: " + m_queryType.getStringValue());
+        getLogger().warn("Full query params: " + params);
 
         // Determine the endpoint based on query type
         String endpoint = getEndpoint();
@@ -401,6 +392,10 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
                 params.put("from", fromDate);
                 params.put("to", toDate);
             }
+
+            // Add timezone parameter - use system default timezone
+            String timezone = java.time.ZoneId.systemDefault().getId();
+            params.put("timezone", timezone);
 
             // Optional season filter - if not specified, returns fixtures from all seasons
             if (m_season.getIntValue() > 0) {

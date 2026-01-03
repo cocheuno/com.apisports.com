@@ -766,6 +766,10 @@ public class FixturesNodeModel extends AbstractFootballQueryNodeModel {
                 params.put("to", toDate);
             }
 
+            // Add timezone parameter - use system default timezone
+            String timezone = java.time.ZoneId.systemDefault().getId();
+            params.put("timezone", timezone);
+
             // Optional season filter - if not specified, returns fixtures from all seasons
             if (m_season.getIntValue() > 0) {
                 params.put("season", String.valueOf(m_season.getIntValue()));
