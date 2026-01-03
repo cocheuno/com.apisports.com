@@ -173,7 +173,7 @@ public abstract class AbstractFootballQueryNodeModel extends NodeModel {
      */
     protected JsonNode callApi(ApiSportsHttpClient client, String endpoint,
                                Map<String, String> params, ObjectMapper mapper) throws Exception {
-        getLogger().info("Making API call: GET " + endpoint + " with params: " + params);
+        getLogger().warn("Making API call: GET " + endpoint + " with params: " + params);
         String response = client.get(endpoint, params);
         getLogger().debug("Raw API response: " + response);
 
@@ -182,7 +182,7 @@ public abstract class AbstractFootballQueryNodeModel extends NodeModel {
         // Log response metadata
         JsonNode results = root.get("results");
         if (results != null) {
-            getLogger().info("API returned " + results.asInt() + " results");
+            getLogger().warn("API returned " + results.asInt() + " results");
         }
 
         // Check for errors in response
