@@ -175,15 +175,31 @@ public abstract class AbstractFootballQueryNodeModel extends NodeModel {
                                Map<String, String> params, ObjectMapper mapper) throws Exception {
         getLogger().info("Making API call: GET " + endpoint + " with params: " + params);
         String response = client.get(endpoint, params);
+        getLogger().debug("Raw API response: " + response);
+
         JsonNode root = mapper.readTree(response);
+
+        // Log response metadata
+        JsonNode results = root.get("results");
+        if (results != null) {
+            getLogger().info("API returned " + results.asInt() + " results");
+        }
 
         // Check for errors in response
         JsonNode errors = root.get("errors");
         if (errors != null && !errors.isEmpty()) {
+            getLogger().error("API returned errors: " + errors.toString());
             throw new Exception("API returned errors: " + errors.toString());
         }
 
-        return root.get("response");
+        JsonNode responseNode = root.get("response");
+        if (responseNode == null) {
+            getLogger().warn("API response node is null");
+        } else if (responseNode.isEmpty()) {
+            getLogger().warn("API returned empty response array. Check your query parameters.");
+        }
+
+        return responseNode;
     }
 
     /**
