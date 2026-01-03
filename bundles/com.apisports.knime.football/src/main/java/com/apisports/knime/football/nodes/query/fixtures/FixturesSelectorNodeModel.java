@@ -220,28 +220,81 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
     }
 
     /**
-     * Validate and normalize date format to YYYY-MM-DD.
+     * Validate date format - accepts multiple formats.
      */
     private void validateDateFormat(String date, String fieldName) throws InvalidSettingsException {
         if (date == null || date.trim().isEmpty()) {
             throw new InvalidSettingsException(fieldName + " cannot be empty");
         }
 
-        // Basic validation - just check for reasonable format
-        String trimmed = date.trim();
-        if (!trimmed.matches("\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}")) {
-            throw new InvalidSettingsException(fieldName + " must be in YYYY-MM-DD or YYYY/MM/DD format");
+        // Try to parse the date to validate it
+        try {
+            normalizeDateFormat(date);
+        } catch (Exception e) {
+            throw new InvalidSettingsException(fieldName + " is not a valid date. Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY");
         }
     }
 
     /**
-     * Normalize date format from YYYY/MM/DD to YYYY-MM-DD.
+     * Normalize date format to YYYY-MM-DD for API.
+     * Accepts: YYYY-MM-DD, YYYY/MM/DD, MM/DD/YYYY, DD/MM/YYYY, MM-DD-YYYY, DD-MM-YYYY
      */
     private String normalizeDateFormat(String date) {
         if (date == null || date.isEmpty()) {
             return date;
         }
-        return date.replace('/', '-');
+
+        String trimmed = date.trim();
+
+        // Already in YYYY-MM-DD format
+        if (trimmed.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return trimmed;
+        }
+
+        // YYYY/MM/DD format
+        if (trimmed.matches("\\d{4}/\\d{2}/\\d{2}")) {
+            return trimmed.replace('/', '-');
+        }
+
+        // MM/DD/YYYY or DD/MM/YYYY format - assume MM/DD/YYYY (US format)
+        if (trimmed.matches("\\d{1,2}/\\d{1,2}/\\d{4}")) {
+            String[] parts = trimmed.split("/");
+            int first = Integer.parseInt(parts[0]);
+            int second = Integer.parseInt(parts[1]);
+            String year = parts[2];
+
+            // If first number > 12, it must be DD/MM/YYYY
+            if (first > 12) {
+                return String.format("%s-%02d-%02d", year, second, first);
+            }
+            // Assume MM/DD/YYYY (US format)
+            return String.format("%s-%02d-%02d", year, first, second);
+        }
+
+        // MM-DD-YYYY or DD-MM-YYYY format
+        if (trimmed.matches("\\d{1,2}-\\d{1,2}-\\d{4}")) {
+            String[] parts = trimmed.split("-");
+            int first = Integer.parseInt(parts[0]);
+            int second = Integer.parseInt(parts[1]);
+            String year = parts[2];
+
+            // If first number > 12, it must be DD-MM-YYYY
+            if (first > 12) {
+                return String.format("%s-%02d-%02d", year, second, first);
+            }
+            // Assume MM-DD-YYYY (US format)
+            return String.format("%s-%02d-%02d", year, first, second);
+        }
+
+        // Try parsing with LocalDate as fallback
+        try {
+            java.time.LocalDate parsed = java.time.LocalDate.parse(trimmed);
+            return parsed.toString();
+        } catch (Exception e) {
+            // Return as-is and let API handle it
+            getLogger().warn("Could not parse date format: " + trimmed + ", sending as-is");
+            return trimmed;
+        }
     }
 
     @Override
