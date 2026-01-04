@@ -161,20 +161,25 @@ public class FixturesSelectorNodeDialog extends AbstractFootballQueryNodeDialog 
     }
 
     /**
-     * Populate team2 combo with teams from selected league.
+     * Populate team2 combo with teams from selected league, or all teams if no league selected.
      */
     private void populateTeam2Combo() {
         LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
-        if (selectedLeague == null) {
-            return;
-        }
 
         team2Combo.removeAllItems();
         team2Combo.addItem(new TeamItem(-1, "-- Select Team 2 --"));
 
         if (allTeams != null) {
-            for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
-                if (team.getLeagueIds().contains(selectedLeague.id)) {
+            if (selectedLeague != null && selectedLeague.id > 0) {
+                // Filter teams by selected league
+                for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
+                    if (team.getLeagueIds().contains(selectedLeague.id)) {
+                        team2Combo.addItem(new TeamItem(team.getId(), team.getName()));
+                    }
+                }
+            } else {
+                // No league selected - show all teams
+                for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
                     team2Combo.addItem(new TeamItem(team.getId(), team.getName()));
                 }
             }
