@@ -424,19 +424,31 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         Map<Integer, Team> teamMap = new HashMap<>(); // Deduplicate teams by ID
 
         // Determine which season to use for team queries
-        // Use the most recent year from filtered seasons, or current year
-        int seasonToUse = java.time.Year.now().getValue();
+        // IMPORTANT: Don't use future seasons (like 2026 in January 2026) as they have no data
+        // Default to previous year which is guaranteed to have complete data
+        int currentYear = java.time.Year.now().getValue();
+        int seasonToUse = currentYear - 1;  // Use previous year as default (has complete data)
+
         String[] selectedSeasons = m_selectedSeasons.getStringArrayValue();
         if (selectedSeasons.length > 0) {
-            // Use the first selected season
+            // Use the first selected season (could be from UI selection)
             try {
-                seasonToUse = Integer.parseInt(selectedSeasons[0]);
+                int selectedYear = Integer.parseInt(selectedSeasons[0]);
+                // Only use selected year if it's not in the future
+                if (selectedYear <= currentYear) {
+                    seasonToUse = selectedYear;
+                } else {
+                    getLogger().warn("Selected season " + selectedYear + " is in the future, using " + seasonToUse + " instead");
+                }
             } catch (NumberFormatException e) {
-                // Use current year
+                getLogger().warn("Invalid season format, using default: " + seasonToUse);
             }
         }
 
-        getLogger().info("Loading teams for " + leagues.size() + " leagues using season " + seasonToUse);
+        getLogger().warn("=== TEAM LOADING DEBUG ===");
+        getLogger().warn("Loading teams for " + leagues.size() + " leagues using season " + seasonToUse);
+        getLogger().warn("Current year: " + currentYear + ", Selected seasons: " +
+                        (selectedSeasons.length > 0 ? String.join(",", selectedSeasons) : "none"));
 
         // Load teams for ALL filtered leagues
         for (int i = 0; i < leagues.size(); i++) {
@@ -492,6 +504,18 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         }
 
         teams.addAll(teamMap.values());
+
+        // Final summary logging
+        getLogger().warn("=== TEAM LOADING COMPLETE ===");
+        getLogger().warn("Total teams loaded: " + teams.size());
+        if (!teams.isEmpty()) {
+            Team firstTeam = teams.get(0);
+            getLogger().warn("Sample team: " + firstTeam.getName() + " (ID: " + firstTeam.getId() +
+                           ", Leagues: " + firstTeam.getLeagueIds() + ")");
+        } else {
+            getLogger().warn("WARNING: No teams were loaded! Check API response or season selection.");
+        }
+
         return teams;
     }
 
