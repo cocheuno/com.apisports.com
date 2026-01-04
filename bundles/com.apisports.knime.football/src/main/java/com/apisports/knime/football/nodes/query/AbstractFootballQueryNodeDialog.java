@@ -189,15 +189,23 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
     }
 
     /**
-     * Update team dropdown to show teams for selected league.
+     * Update team dropdown to show teams for selected league, or all teams if no league.
      */
     private void updateTeamCombo(int leagueId) {
         teamCombo.removeAllItems();
         teamCombo.addItem(new TeamItem(-1, "-- All Teams --"));
 
         if (allTeams != null) {
-            for (ReferenceData.Team team : allTeams) {
-                if (team.getLeagueIds().contains(leagueId)) {
+            if (leagueId > 0) {
+                // Filter teams by selected league
+                for (ReferenceData.Team team : allTeams) {
+                    if (team.getLeagueIds().contains(leagueId)) {
+                        teamCombo.addItem(new TeamItem(team.getId(), team.getName()));
+                    }
+                }
+            } else {
+                // No league selected - show all teams
+                for (ReferenceData.Team team : allTeams) {
                     teamCombo.addItem(new TeamItem(team.getId(), team.getName()));
                 }
             }
@@ -226,6 +234,9 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
         int savedLeagueId = settings.getInt(AbstractFootballQueryNodeModel.CFGKEY_LEAGUE_ID, -1);
         int savedSeason = settings.getInt(AbstractFootballQueryNodeModel.CFGKEY_SEASON, -1);
         int savedTeamId = settings.getInt(AbstractFootballQueryNodeModel.CFGKEY_TEAM_ID, -1);
+
+        // Initialize team combo with all teams (will be filtered when league is selected)
+        updateTeamCombo(savedLeagueId);
 
         // Restore selections
         selectLeague(savedLeagueId);

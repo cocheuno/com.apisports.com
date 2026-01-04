@@ -166,19 +166,24 @@ public class PlayersSelectorNodeDialog extends AbstractFootballQueryNodeDialog {
     }
 
     /**
-     * Populate team list with teams from selected league.
+     * Populate team list with teams from selected league, or all teams if no league selected.
      */
     private void populateTeamList() {
         LeagueItem selectedLeague = (LeagueItem) leagueCombo.getSelectedItem();
-        if (selectedLeague == null) {
-            return;
-        }
 
         teamListModel.clear();
 
         if (allTeams != null) {
-            for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
-                if (team.getLeagueIds().contains(selectedLeague.id)) {
+            if (selectedLeague != null && selectedLeague.id > 0) {
+                // Filter teams by selected league
+                for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
+                    if (team.getLeagueIds().contains(selectedLeague.id)) {
+                        teamListModel.addElement(new TeamItem(team.getId(), team.getName()));
+                    }
+                }
+            } else {
+                // No league selected - show all teams
+                for (com.apisports.knime.port.ReferenceData.Team team : allTeams) {
                     teamListModel.addElement(new TeamItem(team.getId(), team.getName()));
                 }
             }
