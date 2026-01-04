@@ -192,24 +192,34 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
      * Update team dropdown to show teams for selected league, or all teams if no league.
      */
     private void updateTeamCombo(int leagueId) {
+        System.out.println("=== UPDATE TEAM COMBO ===");
+        System.out.println("League ID: " + leagueId);
+        System.out.println("All teams available: " + (allTeams != null ? allTeams.size() : "null"));
+
         teamCombo.removeAllItems();
         teamCombo.addItem(new TeamItem(-1, "-- All Teams --"));
 
+        int teamsAdded = 0;
         if (allTeams != null) {
             if (leagueId > 0) {
                 // Filter teams by selected league
                 for (ReferenceData.Team team : allTeams) {
                     if (team.getLeagueIds().contains(leagueId)) {
                         teamCombo.addItem(new TeamItem(team.getId(), team.getName()));
+                        teamsAdded++;
                     }
                 }
             } else {
                 // No league selected - show all teams
                 for (ReferenceData.Team team : allTeams) {
                     teamCombo.addItem(new TeamItem(team.getId(), team.getName()));
+                    teamsAdded++;
                 }
             }
         }
+
+        System.out.println("Teams added to dropdown: " + teamsAdded);
+        System.out.println("Total items in teamCombo: " + teamCombo.getItemCount());
     }
 
     @Override
