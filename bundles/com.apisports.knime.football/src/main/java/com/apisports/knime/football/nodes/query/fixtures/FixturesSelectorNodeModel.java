@@ -169,10 +169,17 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
         String mode = m_dateMode.getStringValue();
         LocalDate today = LocalDate.now();
 
+        // Log all date-related settings for debugging
+        getLogger().warn("=== DATE RESOLUTION DEBUG ===");
+        getLogger().warn("Date mode from settings: '" + mode + "'");
+        getLogger().warn("m_fromDate value: '" + m_fromDate.getStringValue() + "'");
+        getLogger().warn("m_toDate value: '" + m_toDate.getStringValue() + "'");
+
         if (MODE_RANGE.equals(mode)) {
             // Use dates as-is
             String from = m_fromDate.getStringValue();
             String to = m_toDate.getStringValue().isEmpty() ? from : m_toDate.getStringValue();
+            getLogger().warn("Using RANGE mode - from: '" + from + "', to: '" + to + "'");
             return new String[]{from, to};
 
         } else if (MODE_RELATIVE.equals(mode)) {
