@@ -445,10 +445,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             }
         }
 
-        getLogger().warn("=== TEAM LOADING DEBUG ===");
-        getLogger().warn("Loading teams for " + leagues.size() + " leagues using season " + seasonToUse);
-        getLogger().warn("Current year: " + currentYear + ", Selected seasons: " +
-                        (selectedSeasons.length > 0 ? String.join(",", selectedSeasons) : "none"));
+        getLogger().info("Loading teams for " + leagues.size() + " leagues using season " + seasonToUse);
 
         // Load teams for ALL filtered leagues
         for (int i = 0; i < leagues.size(); i++) {
@@ -504,18 +501,6 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         }
 
         teams.addAll(teamMap.values());
-
-        // Final summary logging
-        getLogger().warn("=== TEAM LOADING COMPLETE ===");
-        getLogger().warn("Total teams loaded: " + teams.size());
-        if (!teams.isEmpty()) {
-            Team firstTeam = teams.get(0);
-            getLogger().warn("Sample team: " + firstTeam.getName() + " (ID: " + firstTeam.getId() +
-                           ", Leagues: " + firstTeam.getLeagueIds() + ")");
-        } else {
-            getLogger().warn("WARNING: No teams were loaded! Check API response or season selection.");
-        }
-
         return teams;
     }
 
