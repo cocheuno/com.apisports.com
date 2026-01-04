@@ -266,6 +266,9 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
     private void populateLeagueCombo() {
         leagueCombo.removeAllItems();
 
+        // Add placeholder for "no league selected" - shows all teams
+        leagueCombo.addItem(new LeagueItem(-1, "-- All Leagues --", ""));
+
         if (allLeagues != null) {
             for (ReferenceData.League league : allLeagues) {
                 leagueCombo.addItem(new LeagueItem(
