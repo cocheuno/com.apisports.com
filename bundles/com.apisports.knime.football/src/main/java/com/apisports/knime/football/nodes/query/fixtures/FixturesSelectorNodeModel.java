@@ -130,9 +130,7 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
             if (m_team2Id.getIntValue() <= 0) {
                 throw new InvalidSettingsException("Please select Team 2 for Head to Head query");
             }
-            if (m_season.getIntValue() <= 0) {
-                throw new InvalidSettingsException("Please select a season for Head to Head query");
-            }
+            // Season is optional for H2H - if not specified, returns all historical H2H matches
         }
         // QUERY_LIVE has no special validation
     }
@@ -433,8 +431,10 @@ public class FixturesSelectorNodeModel extends AbstractFootballQueryNodeModel {
             // H2H requires two team IDs in format "teamId1-teamId2"
             params.put("h2h", String.valueOf(m_teamId.getIntValue()) + "-" +
                               String.valueOf(m_team2Id.getIntValue()));
-            // Add season to filter H2H results to specific season
-            params.put("season", String.valueOf(m_season.getIntValue()));
+            // Optional season filter - if not specified, returns all historical H2H matches
+            if (m_season.getIntValue() > 0) {
+                params.put("season", String.valueOf(m_season.getIntValue()));
+            }
         }
 
         // Optional status filter
