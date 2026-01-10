@@ -24,7 +24,6 @@ This document provides precise node configurations for implementing the Teams an
 ```
 apiKey: <your-api-key>
 sport: FOOTBALL
-tier: FREE (or your tier)
 ```
 
 **Connections**:
