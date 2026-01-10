@@ -80,7 +80,6 @@ public class PlayerStatsNodeDialog extends AbstractFootballQueryNodeDialog {
         leagueCombo.setEnabled(false);
         seasonCombo.setEnabled(false);
         teamCombo.setEnabled(false);
-        teamOptionalCheckbox.setVisible(false);
     }
 
     @Override

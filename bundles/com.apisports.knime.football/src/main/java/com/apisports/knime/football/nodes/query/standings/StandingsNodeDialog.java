@@ -58,7 +58,6 @@ public class StandingsNodeDialog extends AbstractFootballQueryNodeDialog {
 
         // Disable team selection (not applicable for standings)
         teamCombo.setEnabled(false);
-        teamOptionalCheckbox.setVisible(false);
     }
 
     @Override
