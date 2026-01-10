@@ -46,7 +46,8 @@ We welcome many types of contributions:
 - Improved error handling and user feedback
 - Better caching strategies
 - Documentation improvements
-- Example workflows
+- Example workflows (see `docs/workflows/` for format)
+- Performance optimizations
 
 ## Development Setup
 
