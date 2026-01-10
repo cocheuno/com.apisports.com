@@ -42,10 +42,5 @@ public class ApiSportsConnectorNodeDialog extends DefaultNodeSettingsPane {
             new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_SPORT, Sport.FOOTBALL.getDisplayName()),
             "Sport:",
             Arrays.stream(Sport.values()).map(Sport::getDisplayName).toArray(String[]::new)));
-        
-        addDialogComponent(new DialogComponentStringSelection(
-            new SettingsModelString(ApiSportsConnectorNodeModel.CFGKEY_TIER, "free"),
-            "Tier:",
-            "free", "basic", "pro", "ultra"));
     }
 }

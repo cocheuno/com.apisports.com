@@ -101,7 +101,6 @@ A sports analytics company wants to analyze Premier League team performance and 
 |---------|-------|
 | API Key | Your API-Sports API key |
 | Sport | Football |
-| Tier | Your subscription tier (free/basic/pro/ultra) |
 
 **Output**: API-Sports Connection (port object)
 
@@ -526,7 +525,7 @@ Export the joined Team-Player data for:
 | Empty Teams output | Season not started | Select a completed season |
 | Statistics columns all missing | "Include Statistics" unchecked | Check the statistics option |
 | Join produces no rows | Team names don't match | Check for whitespace, use String Manipulation |
-| Rate limit exceeded | Too many API calls | Wait and retry, or upgrade tier |
+| Rate limit exceeded | Too many API calls | Wait and retry, or upgrade API subscription |
 | Player_ID not found | Player changed teams | Query by season when player was active |
 
 ---

@@ -61,7 +61,6 @@ public class FixturesNodeDialog extends AbstractFootballQueryNodeDialog {
         super();
         // Hide the inherited single-selection teamCombo from parent class
         teamCombo.setVisible(false);
-        teamOptionalCheckbox.setVisible(false);
 
         // Create multi-selection team list to replace the combo
         createTeamList();
