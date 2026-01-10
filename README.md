@@ -11,10 +11,11 @@ This extension provides a comprehensive set of KNIME nodes for accessing footbal
 ## Features
 
 - **14+ Query Nodes** - Access teams, players, fixtures, standings, predictions, odds, and more
-- **Smart Caching** - Reduces API calls with configurable TTL caching
-- **Rate Limiting** - Automatic rate limiting based on your subscription tier
-- **Reference Data** - SQLite-backed reference data for fast dropdown population
+- **Smart Caching** - Two-level caching (memory + disk) with configurable TTL
+- **Automatic Rate Limiting** - Token bucket-based rate limiting per API key
+- **Independent Reference Data** - Each Reference Data Loader node has its own isolated database
 - **Flow Variables** - Full support for KNIME flow variables for dynamic workflows
+- **Comprehensive Statistics** - Teams node outputs up to 146 columns including detailed statistics
 
 ## Requirements
 
@@ -48,7 +49,7 @@ Then install the generated update site from `releng/com.apisports.knime.update/t
 
 2. **Add the Connector Node** - Drag "API-Sports Connector" onto your workflow
 
-3. **Configure Connection** - Enter your API key and select subscription tier
+3. **Configure Connection** - Enter your API key and select sport (Football)
 
 4. **Load Reference Data** - Add "Reference Data Loader" to cache leagues, teams, etc.
 
@@ -61,13 +62,31 @@ Then install the generated update site from `releng/com.apisports.knime.update/t
 │  API-Sports     │───▶│  Reference Data     │───▶│   Teams     │
 │  Connector      │    │  Loader             │    │             │
 └─────────────────┘    └─────────────────────┘    └─────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐    ┌─────────────┐
-                       │    Fixtures     │───▶│  Standings  │
-                       │                 │    │             │
-                       └─────────────────┘    └─────────────┘
+                               │
+                               ▼
+                      ┌─────────────────┐    ┌─────────────┐
+                      │    Fixtures     │───▶│  Standings  │
+                      │                 │    │             │
+                      └─────────────────┘    └─────────────┘
 ```
+
+### Multi-Country Workflow
+
+You can have multiple Reference Data Loader nodes for different countries:
+
+```
+                      ┌─────────────────────┐    ┌─────────────┐
+                 ┌───▶│  Reference Data     │───▶│   Teams     │
+                 │    │  Loader (England)   │    │  (England)  │
+┌────────────────┤    └─────────────────────┘    └─────────────┘
+│  API-Sports    │
+│  Connector     │    ┌─────────────────────┐    ┌─────────────┐
+└────────────────┤───▶│  Reference Data     │───▶│   Teams     │
+                      │  Loader (France)    │    │  (France)   │
+                      └─────────────────────┘    └─────────────┘
+```
+
+Each Reference Data Loader maintains its own isolated SQLite database.
 
 ## Architecture
 
@@ -84,16 +103,19 @@ com.apisports.com/
 ├── releng/
 │   └── com.apisports.knime.update       # P2 update site
 └── docs/                                 # Documentation
+    ├── user/                            # User guides
+    ├── workflows/                       # Example workflows
+    └── requirements/                    # Node specifications
 ```
 
 ### Bundle Overview
 
 | Bundle | Purpose |
 |--------|---------|
-| `com.apisports.knime.core` | HTTP client, caching, rate limiting, API utilities |
-| `com.apisports.knime.port` | Custom KNIME port objects for passing connections |
+| `com.apisports.knime.core` | HTTP client, two-level caching, rate limiting, API utilities |
+| `com.apisports.knime.port` | Custom KNIME port objects for passing connections and reference data |
 | `com.apisports.knime.connector` | API-Sports Connector and API Statistics nodes |
-| `com.apisports.knime.football` | All football query nodes |
+| `com.apisports.knime.football` | All football query nodes (14+ nodes) |
 
 ## Available Nodes
 
@@ -108,15 +130,15 @@ com.apisports.com/
 
 | Node | Description |
 |------|-------------|
-| **Reference Data Loader** | Loads and caches countries, leagues, seasons, teams, venues |
+| **Reference Data Loader** | Loads and caches countries, leagues, seasons, teams (each node has isolated database) |
 
 ### Team & Organization Nodes
 
-| Node | Description |
-|------|-------------|
-| **Teams** | Query team information with optional statistics |
-| **Coaches** | Query coach information by team |
-| **Venues** | Query stadium and venue information |
+| Node | Description | Output Columns |
+|------|-------------|----------------|
+| **Teams** | Query team information with optional statistics | Up to 146 columns |
+| **Coaches** | Query coach information by team | - |
+| **Venues** | Query stadium and venue information | - |
 
 ### Match Data Nodes
 
@@ -128,15 +150,15 @@ com.apisports.com/
 
 ### Player Data Nodes
 
-| Node | Description |
-|------|-------------|
-| **Players** | Query players (top scorers, assists, cards, search) |
-| **Players Selector** | Lightweight player browser for selection |
-| **Player Stats** | Detailed match-by-match statistics |
-| **Injuries** | Query player injury information |
-| **Sidelined** | Query player absences (injuries, suspensions) |
-| **Transfers** | Query player transfer data |
-| **Trophies** | Query achievements for players or coaches |
+| Node | Description | Output Columns |
+|------|-------------|----------------|
+| **Players** | Query players (top scorers, assists, cards, by team, search) | 14 columns |
+| **Players Selector** | Lightweight player browser for selection | - |
+| **Player Stats** | Detailed match-by-match statistics | - |
+| **Injuries** | Query player injury information | - |
+| **Sidelined** | Query player absences (injuries, suspensions) | - |
+| **Transfers** | Query player transfer data | - |
+| **Trophies** | Query achievements for players or coaches | - |
 
 ### Analytics Nodes
 
@@ -154,7 +176,8 @@ Creates an authenticated connection to the API-Sports service.
 **Configuration:**
 - **API Key** (required) - Your API-Sports.io API key
 - **Sport** - Currently supports Football
-- **Subscription Tier** - Free, Basic, Pro, or Ultra (affects rate limiting)
+
+The subscription tier is automatically determined by your API key.
 
 **Output:**
 - API Connection port object (connect to other nodes)
@@ -163,15 +186,75 @@ Creates an authenticated connection to the API-Sports service.
 
 ### Reference Data Loader
 
-Loads reference data and caches it in a local SQLite database for fast access.
+Loads reference data and caches it in a local SQLite database for fast access. **Each node instance maintains its own isolated database** to prevent data collision when using multiple loaders.
 
 **Configuration:**
+- **Database Path** (optional) - Leave blank for auto-generated unique path, or specify custom path
+- **Clear & Reload** - Wipe existing data before loading
+- **Country Filter** - Select specific countries to load
+- **Season Filter** - Filter by date range or specific seasons
 - **Load Teams** - Whether to load team data (can take several minutes)
 - **Load Venues** - Whether to load venue data
 - **Cache TTL** - How long to cache data (default: 24 hours)
 
 **Output:**
 - Reference Data port object (provides dropdowns in query nodes)
+
+**Database Location:**
+- Auto-generated: `~/.apisports/football_ref_<instance-id>.db`
+- Each node instance gets a unique database file
+
+---
+
+### Teams
+
+Query team information with comprehensive statistics.
+
+**Configuration:**
+- **League** - Select from loaded leagues
+- **Season** - Select season year
+- **Team** - Optional filter for specific team
+- **Team Name Search** - Search by team name
+- **Include Statistics** - Enable to get full 146-column output
+
+**Output Columns (146 when statistics enabled):**
+
+| Category | Columns | Description |
+|----------|---------|-------------|
+| Team Info | 7 | ID, Name, Code, Country, Founded, National, Logo |
+| Venue Info | 7 | ID, Name, Address, City, Capacity, Surface, Image |
+| Form | 1 | Recent form string (e.g., "WWDLW") |
+| Fixtures | 12 | Played, Wins, Draws, Losses (home/away/total) |
+| Goals For | 32 | Totals, Averages, Minute Distribution, Over/Under |
+| Goals Against | 32 | Totals, Averages, Minute Distribution, Over/Under |
+| Biggest Stats | 11 | Streaks, Biggest Wins/Losses |
+| Clean Sheets | 6 | Home, Away, Total |
+| Penalties | 5 | Scored, Missed, Percentages |
+| Lineups | 1 | Most used formations |
+| Cards | 32 | Yellow/Red cards by minute periods |
+
+---
+
+### Players
+
+Query player data with multiple query modes.
+
+**Query Modes:**
+- **Top Scorers** - League top scorers
+- **Top Assists** - League top assists
+- **Top Yellow Cards** - Most yellow cards
+- **Top Red Cards** - Most red cards
+- **Players by Team** - All players for selected team(s)
+- **Search by Name** - Find players by name
+- **By Player ID** - Specific player details
+
+**Output Columns (14):**
+- Player_ID, Name, Firstname, Lastname, Nationality, Age
+- Team, Position, Appearances, Goals, Assists
+- Yellow_Cards, Red_Cards, Rating
+
+**Optional Input Port:**
+- Connect a table with Player_ID column to query detailed stats for specific players
 
 ---
 
@@ -191,20 +274,7 @@ Query match data with multiple query modes.
 - Include events (goals, cards, substitutions)
 - Include lineups
 - Include statistics
-
----
-
-### Players
-
-Query player data with multiple query modes.
-
-**Query Modes:**
-- **Top Scorers** - League top scorers
-- **Top Assists** - League top assists
-- **Top Yellow Cards** - Most yellow cards
-- **Top Red Cards** - Most red cards
-- **Search by Name** - Find players by name
-- **By Player ID** - Specific player details
+- Include player stats
 
 ---
 
@@ -234,6 +304,25 @@ Query betting odds from multiple bookmakers.
 - Bookmaker filter
 - Bet type filter (1X2, Over/Under, etc.)
 
+## Example Workflows
+
+Detailed workflow examples are available in `docs/workflows/`:
+
+### Teams & Players Analysis Workflow
+
+A comprehensive workflow demonstrating Teams and Players nodes for Premier League analysis:
+
+- [README](docs/workflows/teams-players-analysis/README.md) - Use case and step-by-step guide
+- [Workflow Specification](docs/workflows/teams-players-analysis/workflow-specification.md) - Detailed node configurations
+- [Sample Outputs](docs/workflows/teams-players-analysis/sample-outputs.md) - Expected data examples
+
+**Use Cases Covered:**
+- Team performance analysis (home vs away)
+- Goal scoring pattern analysis
+- Defensive strength ranking
+- Top scorers correlation with team success
+- Formation analysis
+
 ## Common Workflow Patterns
 
 ### Pattern 1: League Analysis
@@ -251,7 +340,14 @@ API Connector → Reference Data → Players (Top Scorers) → Player Stats → 
 API Connector → Reference Data → Fixtures Selector → [Filter] → Predictions → Odds
 ```
 
-### Pattern 4: API Monitoring
+### Pattern 4: Multi-Country Comparison
+```
+API Connector ─┬─► Reference Data (England) ─► Teams (England)
+               │
+               └─► Reference Data (France) ─► Teams (France)
+```
+
+### Pattern 5: API Monitoring
 Place "API Statistics" at the end of your workflow to monitor API usage:
 ```
 [Your workflow nodes] → API Statistics
@@ -268,14 +364,15 @@ API-Sports has rate limits based on your subscription:
 | Pro | 150,000+ | 450 |
 | Ultra | Unlimited | 450 |
 
-The extension automatically handles rate limiting based on your configured tier.
+The extension automatically handles rate limiting based on API responses.
 
 ## Caching
 
-The extension includes intelligent caching to reduce API calls:
+The extension includes intelligent two-level caching to reduce API calls:
 
+- **L1 Cache** - In-memory LRU cache (default: 1000 entries)
+- **L2 Cache** - Disk-based cache with configurable TTL
 - **Reference Data** - Cached in SQLite (default: 24 hours)
-- **API Responses** - In-memory cache with configurable TTL
 - **Cache Hits** - Viewable in API Statistics node
 
 ## Configuration
@@ -286,18 +383,24 @@ The extension includes intelligent caching to reduce API calls:
 |----------|-------------|---------|
 | `APISPORTS_CACHE_DIR` | Cache directory location | `~/.apisports/` |
 
-### SQLite Database
+### SQLite Databases
 
-Reference data is stored in `~/.apisports/football_ref.db` with tables:
+Reference data is stored in per-node SQLite databases in `~/.apisports/`:
+
+**Naming Pattern:** `football_ref_<instance-id>.db`
+
+**Database Schema:**
 - `countries` - Country reference data
 - `leagues` - League information
-- `seasons` - Available seasons
+- `seasons` - Available seasons per league
 - `teams` - Team information
-- `team_leagues` - Team-league relationships
+- `team_leagues` - Team-league relationships (many-to-many)
+- `metadata` - Cache timestamps and configuration hashes
 
 ## Documentation
 
 - [User Guide](docs/user/football-nodes-guide.md) - Complete node reference
+- [Teams & Players Workflow](docs/workflows/teams-players-analysis/README.md) - Example workflow
 - [Architecture](docs/architecture/descriptor-schema.md) - Technical design
 - [Development](docs/development/v2-implementation-summary.md) - Implementation details
 
@@ -312,6 +415,19 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 3. Set target platform to KNIME 5.5.0+
 4. Run `mvn clean verify` to build
 
+### Building
+
+```bash
+# Full build
+mvn clean verify
+
+# Skip tests
+mvn clean verify -DskipTests
+
+# Build update site only
+mvn clean verify -pl releng/com.apisports.knime.update -am
+```
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
@@ -320,9 +436,11 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 This project uses the following open source libraries:
 
-- [Jackson](https://github.com/FasterXML/jackson) - Apache 2.0
-- [SQLite JDBC](https://github.com/xerial/sqlite-jdbc) - Apache 2.0
-- [SnakeYAML](https://github.com/snakeyaml/snakeyaml) - Apache 2.0
+| Library | License | Purpose |
+|---------|---------|---------|
+| [Jackson](https://github.com/FasterXML/jackson) | Apache 2.0 | JSON parsing |
+| [SQLite JDBC](https://github.com/xerial/sqlite-jdbc) | Apache 2.0 | SQLite database access |
+| [SnakeYAML](https://github.com/snakeyaml/snakeyaml) | Apache 2.0 | YAML configuration |
 
 See [NOTICE](NOTICE) for full attribution.
 
