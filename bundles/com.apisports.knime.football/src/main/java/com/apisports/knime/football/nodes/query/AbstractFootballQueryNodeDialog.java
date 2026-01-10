@@ -30,10 +30,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Abstract base dialog for Football API query nodes.
@@ -45,7 +42,6 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
     protected JComboBox<LeagueItem> leagueCombo;
     protected JComboBox<Integer> seasonCombo;
     protected JComboBox<TeamItem> teamCombo;
-    protected JCheckBox teamOptionalCheckbox;
 
     // Reference data loaded from database
     protected List<ReferenceData.League> allLeagues;
@@ -142,9 +138,6 @@ public abstract class AbstractFootballQueryNodeDialog extends NodeDialogPane {
         teamCombo = new JComboBox<>();
         teamCombo.setPreferredSize(new Dimension(300, 25));
         teamPanel.add(teamCombo);
-        teamOptionalCheckbox = new JCheckBox("(Optional - leave blank for all teams)");
-        teamOptionalCheckbox.setSelected(true);
-        teamPanel.add(teamOptionalCheckbox);
         mainPanel.add(teamPanel);
 
         mainPanel.add(Box.createVerticalStrut(10)); // Spacer

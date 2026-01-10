@@ -39,11 +39,9 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
 
     static final String CFGKEY_API_KEY = "apiKey";
     static final String CFGKEY_SPORT = "sport";
-    static final String CFGKEY_TIER = "tier";
 
     private final SettingsModelString m_apiKey = new SettingsModelString(CFGKEY_API_KEY, "");
     private final SettingsModelString m_sport = new SettingsModelString(CFGKEY_SPORT, Sport.FOOTBALL.getDisplayName());
-    private final SettingsModelString m_tier = new SettingsModelString(CFGKEY_TIER, "free");
 
     protected ApiSportsConnectorNodeModel() {
         super(new PortType[0], new PortType[]{
@@ -55,7 +53,6 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
     protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
         String apiKey = m_apiKey.getStringValue();
         Sport sport = Sport.from(m_sport.getStringValue());
-        String tier = m_tier.getStringValue();
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new InvalidSettingsException("API key must not be empty");
@@ -65,7 +62,7 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
         CacheManager cacheManager = new CacheManager();
         ApiSportsHttpClient client = new ApiSportsHttpClient(apiKey, sport, rateLimiter, cacheManager);
         String apiKeyHash = Integer.toHexString(apiKey.hashCode());
-        ApiSportsConnectionPortObjectSpec spec = new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier);
+        ApiSportsConnectionPortObjectSpec spec = new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash);
         ApiSportsConnectionPortObject portObject = new ApiSportsConnectionPortObject(spec, client);
 
         return new PortObject[]{portObject};
@@ -79,11 +76,10 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
         }
 
         Sport sport = Sport.from(m_sport.getStringValue());
-        String tier = m_tier.getStringValue();
 
         String apiKeyHash = Integer.toHexString(apiKey.hashCode());
         return new PortObjectSpec[]{
-            new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash, tier)
+            new ApiSportsConnectionPortObjectSpec(sport, apiKeyHash)
         };
     }
 
@@ -91,21 +87,18 @@ public class ApiSportsConnectorNodeModel extends NodeModel {
     protected void saveSettingsTo(final NodeSettingsWO settings) {
         m_apiKey.saveSettingsTo(settings);
         m_sport.saveSettingsTo(settings);
-        m_tier.saveSettingsTo(settings);
     }
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_apiKey.loadSettingsFrom(settings);
         m_sport.loadSettingsFrom(settings);
-        m_tier.loadSettingsFrom(settings);
     }
 
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_apiKey.validateSettings(settings);
         m_sport.validateSettings(settings);
-        m_tier.validateSettings(settings);
     }
 
     @Override

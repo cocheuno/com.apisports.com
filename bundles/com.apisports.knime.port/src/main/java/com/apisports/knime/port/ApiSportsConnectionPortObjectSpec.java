@@ -27,15 +27,27 @@ import java.util.Objects;
  * Contains connection configuration without the actual client instance.
  */
 public class ApiSportsConnectionPortObjectSpec implements PortObjectSpec {
-    
+
+    private static final String DEFAULT_TIER = "auto";
+
     private final Sport sport;
     private final String apiKeyHash; // Store hash instead of actual key for security
     private final String tierName;
 
+    /**
+     * Create a new connection spec. Tier is determined automatically by the API key.
+     */
+    public ApiSportsConnectionPortObjectSpec(Sport sport, String apiKeyHash) {
+        this(sport, apiKeyHash, DEFAULT_TIER);
+    }
+
+    /**
+     * Create a new connection spec with explicit tier (for backwards compatibility with serialization).
+     */
     public ApiSportsConnectionPortObjectSpec(Sport sport, String apiKeyHash, String tierName) {
         this.sport = Objects.requireNonNull(sport, "Sport cannot be null");
         this.apiKeyHash = Objects.requireNonNull(apiKeyHash, "API key hash cannot be null");
-        this.tierName = Objects.requireNonNull(tierName, "Tier name cannot be null");
+        this.tierName = tierName != null ? tierName : DEFAULT_TIER;
     }
 
     public Sport getSport() {
@@ -77,6 +89,6 @@ public class ApiSportsConnectionPortObjectSpec implements PortObjectSpec {
 
     @Override
     public String toString() {
-        return String.format("ApiSportsConnection[sport=%s, tier=%s]", sport.getDisplayName(), tierName);
+        return String.format("ApiSportsConnection[sport=%s]", sport.getDisplayName());
     }
 }
