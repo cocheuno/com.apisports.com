@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * NodeModel for Reference Data Loader.
@@ -80,6 +81,17 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     static final String CFGKEY_BEGIN_DATE = "beginDate";
     static final String CFGKEY_END_DATE = "endDate";
     static final String CFGKEY_SELECTED_SEASONS = "selectedSeasons";
+    static final String CFGKEY_NODE_INSTANCE_ID = "nodeInstanceId";
+
+    // Legacy shared path - used to detect nodes that need migration to unique paths
+    private static final String LEGACY_SHARED_DB_PATH;
+    static {
+        String userHome = System.getProperty("user.home");
+        LEGACY_SHARED_DB_PATH = userHome + File.separator + ".apisports" + File.separator + "football_ref.db";
+    }
+
+    // Generate a unique instance ID for this node (used for unique database path)
+    private final String m_nodeInstanceId = UUID.randomUUID().toString().substring(0, 8);
 
     private final SettingsModelBoolean m_loadTeams =
         new SettingsModelBoolean(CFGKEY_LOAD_TEAMS, true);
@@ -90,7 +102,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
     private final SettingsModelStringArray m_countryFilter =
         new SettingsModelStringArray(CFGKEY_COUNTRY_FILTER, new String[0]);
     private final SettingsModelString m_dbPath =
-        new SettingsModelString(CFGKEY_DB_PATH, getDefaultDbPath());
+        new SettingsModelString(CFGKEY_DB_PATH, "");  // Will be set in execute() if empty
     private final SettingsModelBoolean m_clearAndReload =
         new SettingsModelBoolean(CFGKEY_CLEAR_AND_RELOAD, false);
     private final SettingsModelString m_beginDate =
@@ -99,10 +111,34 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         new SettingsModelString(CFGKEY_END_DATE, "");
     private final SettingsModelStringArray m_selectedSeasons =
         new SettingsModelStringArray(CFGKEY_SELECTED_SEASONS, new String[0]);
+    private final SettingsModelString m_savedInstanceId =
+        new SettingsModelString(CFGKEY_NODE_INSTANCE_ID, "");
 
-    public static String getDefaultDbPath() {
+    /**
+     * Get the database directory path.
+     */
+    public static String getDbDirectory() {
         String userHome = System.getProperty("user.home");
-        return userHome + File.separator + ".apisports" + File.separator + "football_ref.db";
+        return userHome + File.separator + ".apisports";
+    }
+
+    /**
+     * Generate a unique database path for this node instance.
+     * Each node gets its own database file to prevent data collision.
+     */
+    private String generateUniqueDbPath(String instanceId) {
+        return getDbDirectory() + File.separator + "football_ref_" + instanceId + ".db";
+    }
+
+    /**
+     * Get the effective instance ID (either saved or newly generated).
+     */
+    private String getEffectiveInstanceId() {
+        String savedId = m_savedInstanceId.getStringValue();
+        if (savedId != null && !savedId.isEmpty()) {
+            return savedId;
+        }
+        return m_nodeInstanceId;
     }
 
     protected ReferenceDataLoaderNodeModel() {
@@ -117,8 +153,24 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         ApiSportsHttpClient client = connectionPort.getClient();
         ObjectMapper mapper = new ObjectMapper();
 
-        // Initialize SQLite database
+        // Determine the database path - ensure each node instance has its own database
         String dbPath = m_dbPath.getStringValue();
+        String effectiveInstanceId = getEffectiveInstanceId();
+
+        // Check if we need to generate a unique path (empty, legacy shared path, or first execution)
+        if (dbPath == null || dbPath.isEmpty() || dbPath.equals(LEGACY_SHARED_DB_PATH)) {
+            // Generate unique path for this node instance
+            dbPath = generateUniqueDbPath(effectiveInstanceId);
+            m_dbPath.setStringValue(dbPath);
+
+            // Save the instance ID so it persists across sessions
+            if (m_savedInstanceId.getStringValue().isEmpty()) {
+                m_savedInstanceId.setStringValue(effectiveInstanceId);
+            }
+
+            getLogger().info("Using unique database path for this node: " + dbPath);
+        }
+
         exec.setMessage("Initializing database at " + dbPath + "...");
         exec.setProgress(0.05);
 
@@ -533,6 +585,7 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
         m_beginDate.saveSettingsTo(settings);
         m_endDate.saveSettingsTo(settings);
         m_selectedSeasons.saveSettingsTo(settings);
+        m_savedInstanceId.saveSettingsTo(settings);
     }
 
     @Override
@@ -578,6 +631,11 @@ public class ReferenceDataLoaderNodeModel extends NodeModel {
             m_selectedSeasons.loadSettingsFrom(settings);
         } catch (InvalidSettingsException e) {
             // Use default (empty array)
+        }
+        try {
+            m_savedInstanceId.loadSettingsFrom(settings);
+        } catch (InvalidSettingsException e) {
+            // Use default (empty - will generate new ID on first execution)
         }
     }
 
