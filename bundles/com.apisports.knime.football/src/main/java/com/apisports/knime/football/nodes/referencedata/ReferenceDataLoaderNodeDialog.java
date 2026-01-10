@@ -42,13 +42,14 @@ public class ReferenceDataLoaderNodeDialog extends DefaultNodeSettingsPane {
         createNewGroup("Database Configuration");
 
         addDialogComponent(new DialogComponentLabel(
-            "Database file path (will be auto-created on first execution):"));
+            "Each node instance uses its own database (auto-generated path)."));
+        addDialogComponent(new DialogComponentLabel(
+            "Leave blank to auto-generate, or specify a custom path:"));
 
         addDialogComponent(new DialogComponentString(
-            new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_DB_PATH,
-                ReferenceDataLoaderNodeModel.getDefaultDbPath()),
-            "Database Path:",
-            true,
+            new SettingsModelString(ReferenceDataLoaderNodeModel.CFGKEY_DB_PATH, ""),
+            "Database Path (optional):",
+            false,
             60));
 
         addDialogComponent(new DialogComponentBoolean(
