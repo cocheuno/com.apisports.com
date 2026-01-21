@@ -6,5 +6,11 @@
 
    <description>Football nodes for Carovex API-Sports KNIME extension</description>
 
+   <!-- Core dependencies: automatically installed with this feature -->
+   <plugin id="com.apisports.knime.core" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="com.apisports.knime.port" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+   <plugin id="com.apisports.knime.connector" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
+
+   <!-- Football nodes -->
    <plugin id="com.apisports.knime.football" download-size="0" install-size="0" version="0.0.0" unpack="false"/>
 </feature>

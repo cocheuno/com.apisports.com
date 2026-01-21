@@ -3,56 +3,56 @@
 <plugin>
    <extension point="org.knime.workbench.repository.nodes">
       <!-- Reference Data -->
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.referencedata.ReferenceDataLoaderNodeFactory"/>
       <!-- Curated Query Nodes -->
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.fixtures.FixturesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.fixtures.FixturesSelectorNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.standings.StandingsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.players.PlayersNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.players.PlayersSelectorNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.players.PlayerStatsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.teams.TeamsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.odds.OddsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.venues.VenuesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.injuries.InjuriesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.coaches.CoachesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.predictions.PredictionsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.transfers.TransfersNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.trophies.TrophiesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.query.sidelined.SidelinedNodeFactory"/>
       <!-- Legacy Nodes (deprecated) -->
       <!--
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.leagues.FootballLeaguesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.teams.FootballTeamsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.fixtures.FootballFixturesNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.standings.FootballStandingsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.stats.FootballStatsNodeFactory"/>
-      <node category-path="/carovex/apisports/football"
+      <node category-path="/community/apisports/football"
             factory-class="com.apisports.knime.football.nodes.predictions.FootballPredictionsNodeFactory"/>
       -->
    </extension>
    <extension point="org.knime.workbench.repository.categories">
-      <category level-id="football" name="Football" path="/carovex/apisports" icon="icons/football.png"/>
+      <category level-id="football" name="Football" path="/community/apisports" icon="icons/football.png"/>
    </extension>
 </plugin>
