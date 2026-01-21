@@ -2,13 +2,13 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension point="org.knime.workbench.repository.nodes">
-      <node category-path="/carovex/apisports"
+      <node category-path="/community/apisports"
             factory-class="com.apisports.knime.connector.nodes.ApiSportsConnectorNodeFactory"/>
-      <node category-path="/carovex/apisports"
+      <node category-path="/community/apisports"
             factory-class="com.apisports.knime.connector.nodes.stats.ApiStatisticsNodeFactory"/>
    </extension>
    <extension point="org.knime.workbench.repository.categories">
-      <category level-id="carovex" name="Carovex" path="/" icon="icons/carovex.png"/>
-      <category level-id="apisports" name="API-Sports" path="/carovex" icon="icons/apisports.png"/>
+      <category level-id="community" name="Community" path="/" icon="icons/community.png"/>
+      <category level-id="apisports" name="API-Sports" path="/community" icon="icons/apisports.png"/>
    </extension>
 </plugin>
