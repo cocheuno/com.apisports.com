@@ -5,19 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.apisports.knime</groupId>
-    <artifactId>com.apisports.knime.parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <artifactId>knime-apisports</artifactId>
+    <version>${revision}${changelist}</version>
     <packaging>pom</packaging>
 
     <name>API-Sports KNIME Extension</name>
     <description>KNIME extension for accessing API-Sports data</description>
 
     <properties>
+    	<revision>1.0.0</revision>
+		<changelist>-SNAPSHOT</changelist>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <tycho.version>4.0.10</tycho.version>
-        <knime.version>5.5.0</knime.version>
+        <tycho.extras.version>${tycho.version}</tycho.extras.version>
+        <knime.version>5.5</knime.version>
     </properties>
 
     <modules>
@@ -26,29 +30,188 @@
         <module>bundles/com.apisports.knime.port</module>
         <module>bundles/com.apisports.knime.connector</module>
         <module>bundles/com.apisports.knime.football</module>
-        
+
         <!-- Features -->
         <module>features/com.apisports.knime.core.feature</module>
         <module>features/com.apisports.knime.football.feature</module>
-        
+
         <!-- Release Engineering -->
         <module>releng/com.apisports.knime.targetplatform</module>
         <module>releng/com.apisports.knime.update</module>
     </modules>
 
+    <repositories>
+        <repository>
+            <id>knime-update-site</id>
+            <layout>p2</layout>
+            <url>https://update.knime.com/analytics-platform/${knime.version}</url>
+        </repository>
+    </repositories>
+
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-maven-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                    <extensions>true</extensions>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-packaging-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>target-platform-configuration</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-compiler-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-p2-repository-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-p2-director-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-surefire-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                    <configuration>
+                        <trimStackTrace>false</trimStackTrace>
+                        <includes>
+                            <include>%regex[.*]</include>
+                        </includes>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-buildtimestamp-jgit</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho.extras</groupId>
+                    <artifactId>tycho-source-feature-plugin</artifactId>
+                    <version>${tycho.extras.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-source-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-p2-plugin</artifactId>
+                    <version>${tycho.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho.extras</groupId>
+                    <artifactId>tycho-eclipserun-plugin</artifactId>
+                    <version>${tycho.extras.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho.extras</groupId>
+                    <artifactId>tycho-p2-extras-plugin</artifactId>
+                    <version>${tycho.extras.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.tycho.extras</groupId>
+                    <artifactId>tycho-dependency-tools-plugin</artifactId>
+                    <version>${tycho.extras.version}</version>
+                    <executions>
+                        <execution>
+                            <id>list-dependencies</id>
+                            <goals>
+                                <goal>list-dependencies</goal>
+                            </goals>
+                            <phase>compile</phase>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.eclipse.tycho</groupId>
+                                        <artifactId>tycho-bnd-plugin</artifactId>
+                                        <versionRange>[0.0.0,)</versionRange>
+                                        <goals>
+                                            <goal>process</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore/>
+                                    </action>
+                                </pluginExecution>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.eclipse.tycho</groupId>
+                                        <artifactId>tycho-packaging-plugin</artifactId>
+                                        <versionRange>[0.0.0,)</versionRange>
+                                        <goals>
+                                            <goal>package-plugin</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore/>
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <plugins>
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-maven-plugin</artifactId>
-                <version>${tycho.version}</version>
                 <extensions>true</extensions>
             </plugin>
-            
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-packaging-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.eclipse.tycho</groupId>
+                        <artifactId>tycho-buildtimestamp-jgit</artifactId>
+                        <version>${tycho.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <timestampProvider>jgit</timestampProvider>
+                    <format>'v'yyyyMMddHHmm</format>
+                    <jgit.ignore>
+                        pom.xml
+                    </jgit.ignore>
+                    <jgit.dirtyWorkingTree>warning</jgit.dirtyWorkingTree>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-p2-repository-plugin</artifactId>
+                <configuration>
+                    <skipArchive>true</skipArchive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>target-platform-configuration</artifactId>
-                <version>${tycho.version}</version>
                 <configuration>
                     <target>
                         <artifact>
@@ -81,68 +244,40 @@
                     </environments>
                 </configuration>
             </plugin>
-            
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-compiler-plugin</artifactId>
-                <version>${tycho.version}</version>
                 <configuration>
                     <source>17</source>
                     <target>17</target>
                     <compilerArgument>-warn:+discouraged,forbidden</compilerArgument>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>plugin-source</id>
+                        <goals>
+                            <goal>plugin-source</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-p2-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-p2-metadata</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>p2-metadata</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
-        
-		<pluginManagement>
-		  <plugins>
-		    <plugin>
-		      <groupId>org.eclipse.m2e</groupId>
-		      <artifactId>lifecycle-mapping</artifactId>
-		      <version>1.0.0</version>
-		      <configuration>
-		        <lifecycleMappingMetadata>
-		          <pluginExecutions>
-		            <pluginExecution>
-		              <pluginExecutionFilter>
-		                <groupId>org.eclipse.tycho</groupId>
-		                <artifactId>tycho-bnd-plugin</artifactId>
-		                <versionRange>[0.0.0,)</versionRange>
-		                <goals>
-		                  <goal>process</goal>
-		                </goals>
-		              </pluginExecutionFilter>
-		              <action>
-		                <ignore/>
-		              </action>
-		            </pluginExecution>
-		            <pluginExecution>
-		              <pluginExecutionFilter>
-		                <groupId>org.eclipse.tycho</groupId>
-		                <artifactId>tycho-packaging-plugin</artifactId>
-		                <versionRange>[0.0.0,)</versionRange>
-		                <goals>
-		                  <goal>package-plugin</goal>
-		                </goals>
-		              </pluginExecutionFilter>
-		              <action>
-		                <ignore/>
-		              </action>
-		            </pluginExecution>
-		          </pluginExecutions>
-		        </lifecycleMappingMetadata>
-		      </configuration>
-		    </plugin>
-		  </plugins>
-</pluginManagement>
-
-	</build>
-
-    <repositories>
-        <repository>
-            <id>knime</id>
-            <layout>p2</layout>
-            <url>https://update.knime.com/analytics-platform/5.5</url>
-        </repository>
-    </repositories>
+    </build>
 </project>
